@@ -39,7 +39,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
 
     switch ($new["video_format"]) {
         case "mpeg2video":
-            $ffmpeg .= " -vf scale={$new["resolution"]} -bf 2 -g 25 -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
+            $ffmpeg .= " -vf scale={$new["resolution"]} -g 25 -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
             break;
         case "h264":
             $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h264 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k";
@@ -115,7 +115,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
 
             switch ($new["video_format"]) {
                 case "mpeg2video":
-                    $ffmpeg .= " -vf scale={$new["resolution"]} -bf 2  -g 25  -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
+                    $ffmpeg .= " -vf scale={$new["resolution"]}  -g 25  -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
                     break;
                 case "h264":
                     $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h264 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
