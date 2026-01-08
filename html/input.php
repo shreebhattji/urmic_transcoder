@@ -22,7 +22,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
 
     $data[] = $new;
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
-    $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -i "udp://@" . $new["input_udp"] . "?overrun_nonfatal=1&fifo_size=50000000" ';
+    $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
     switch ($new["video_format"]) {
         case "mpeg2video":
             $ffmpeg .= " -vf scale=" . $new["resolution"] . "  -c:v mpeg2video -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
