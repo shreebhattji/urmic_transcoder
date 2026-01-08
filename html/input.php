@@ -20,7 +20,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
         "resolution" => $_POST["resolution"],
         "video_bitrate" => $_POST["video_bitrate"],
         "audio_bitrate" => $_POST["audio_bitrate"],
-        "status" => $_POST["status"]
+        "service" => $_POST["service"]
     ];
 
     $data[] = $new;
@@ -63,14 +63,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
                 "resolution" => $_POST["resolution"],
                 "video_bitrate" => $_POST["video_bitrate"],
                 "audio_bitrate" => $_POST["audio_bitrate"],
-                "status" => $_POST["status"]
+                "service" => $_POST["service"]
             ];
         }
         $newData[] = $row;
     }
 
     file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
-
     echo "OK";
     exit;
 }
@@ -150,7 +149,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
                 <th>Resolution</th>
                 <th>Video Bitrate</th>
                 <th>Audio Bitrate</th>
-                <th>Status</th>
+                <th>Service</th>
                 <th>Actions</th>
             </tr>
 
@@ -164,7 +163,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
                     <td><?= $row["resolution"] ?></td>
                     <td><?= $row["video_bitrate"] ?></td>
                     <td><?= $row["audio_bitrate"] ?></td>
-                    <td><?= $row["status"] ?></td>
+                    <td><?= $row["service"] ?></td>
                     <td>
                         <button class="edit-btn" onclick='openEditPopup(<?= json_encode($row) ?>)'>Edit</button>
                         <button class="delete-btn" onclick="deleteService(<?= $row['id'] ?>)">Delete</button>
@@ -204,7 +203,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
             <input type="text" id="video_bitrate" placeholder="Video Bitrate (kbps)">
             <input type="text" id="audio_bitrate" placeholder="Audio Bitrate (kbps)">
 
-            <select id="status">
+            <select id="service">
                 <option value="enable">Enable</option>
                 <option value="disable">Disable</option>
             </select>
@@ -212,11 +211,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
             <button id="saveBtn" onclick="saveService()">Save</button>
             <button onclick="closePopup()">Close</button>
         </div>
+
     </div>
 </div>
 
 <script>
-    // ------------------------ POPUP CONTROL ------------------------
     function openAddPopup() {
         document.getElementById("popup_title").innerText = "Add Service";
         document.getElementById("saveBtn").setAttribute("onclick", "saveService()");
@@ -235,7 +234,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
         document.getElementById("resolution").value = row.resolution;
         document.getElementById("video_bitrate").value = row.video_bitrate;
         document.getElementById("audio_bitrate").value = row.audio_bitrate;
-        document.getElementById("status").value = row.status;
+        document.getElementById("service").value = row.service;
 
         document.getElementById("saveBtn").setAttribute("onclick", "updateService()");
         showPopup();
@@ -260,7 +259,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
         document.getElementById("resolution").value = "1920x1080";
         document.getElementById("video_bitrate").value = "";
         document.getElementById("audio_bitrate").value = "";
-        document.getElementById("status").value = "enable";
+        document.getElementById("service").value = "enable";
     }
 
     // ------------------------ SAVE ------------------------
@@ -274,7 +273,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
         form.append("resolution", resolution.value);
         form.append("video_bitrate", video_bitrate.value);
         form.append("audio_bitrate", audio_bitrate.value);
-        form.append("status", status.value);
+        form.append("service", document.getElementById("service").value);
 
         fetch("input.php", {
                 method: "POST",
@@ -298,7 +297,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
         form.append("resolution", resolution.value);
         form.append("video_bitrate", video_bitrate.value);
         form.append("audio_bitrate", audio_bitrate.value);
-        form.append("status", status.value);
+        form.append("service", document.getElementById("service").value);
 
         fetch("input.php", {
                 method: "POST",
@@ -310,6 +309,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
             });
     }
 
+    // ------------------------ DELETE ------------------------
     function deleteService(id) {
         if (!confirm("Delete this service?")) return;
 
