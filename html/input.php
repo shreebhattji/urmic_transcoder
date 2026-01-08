@@ -7,6 +7,9 @@ if (!file_exists($jsonFile)) {
 }
 $data = json_decode(file_get_contents($jsonFile), true);
 
+// ----------------------------------------------------
+// ADD SERVICE
+// ----------------------------------------------------
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
     $new = [
         "id" => time(),
@@ -22,22 +25,52 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
 
     $data[] = $new;
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
-
     echo "OK";
     exit;
 }
 
+// ----------------------------------------------------
+// DELETE SERVICE
+// ----------------------------------------------------
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
     $id = intval($_POST["id"]);
     $newData = [];
 
     foreach ($data as $row) {
-        if ($row["id"] != $id) {
-            $newData[] = $row;
-        }
+        if ($row["id"] != $id) $newData[] = $row;
     }
 
     file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
+    echo "OK";
+    exit;
+}
+
+// ----------------------------------------------------
+// UPDATE SERVICE
+// ----------------------------------------------------
+if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
+    $id = intval($_POST["id"]);
+    $newData = [];
+
+    foreach ($data as $row) {
+        if ($row["id"] == $id) {
+            $row = [
+                "id" => $id,
+                "input_udp" => $_POST["input_udp"],
+                "output_udp" => $_POST["output_udp"],
+                "video_format" => $_POST["video_format"],
+                "audio_format" => $_POST["audio_format"],
+                "resolution" => $_POST["resolution"],
+                "video_bitrate" => $_POST["video_bitrate"],
+                "audio_bitrate" => $_POST["audio_bitrate"],
+                "status" => $_POST["status"]
+            ];
+        }
+        $newData[] = $row;
+    }
+
+    file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
+
     echo "OK";
     exit;
 }
@@ -95,12 +128,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
         background: #b40000;
         color: white;
     }
+
+    .edit-btn {
+        background: #0066cc;
+        color: white;
+    }
 </style>
 <div class="containerindex">
     <div class="grid">
 
         <h2>Service List</h2>
-        <button onclick="openPopup()">Add Service</button>
+        <button onclick="openAddPopup()">Add Service</button>
 
         <table>
             <tr>
@@ -113,7 +151,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
                 <th>Video Bitrate</th>
                 <th>Audio Bitrate</th>
                 <th>Status</th>
-                <th>Action</th>
+                <th>Actions</th>
             </tr>
 
             <?php foreach ($data as $row): ?>
@@ -127,7 +165,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
                     <td><?= $row["video_bitrate"] ?></td>
                     <td><?= $row["audio_bitrate"] ?></td>
                     <td><?= $row["status"] ?></td>
-                    <td><button class="delete-btn" onclick="deleteService(<?= $row['id'] ?>)">Delete</button></td>
+                    <td>
+                        <button class="edit-btn" onclick='openEditPopup(<?= json_encode($row) ?>)'>Edit</button>
+                        <button class="delete-btn" onclick="deleteService(<?= $row['id'] ?>)">Delete</button>
+                    </td>
                 </tr>
             <?php endforeach; ?>
 
@@ -137,7 +178,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
         <div id="overlay"></div>
 
         <div id="popup">
-            <h3>Add Service</h3>
+            <h3 id="popup_title">Add Service</h3>
+
+            <input type="hidden" id="service_id">
 
             <input type="text" id="in_udp" placeholder="Input UDP">
             <input type="text" id="out_udp" placeholder="Output UDP">
@@ -166,14 +209,39 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
                 <option value="disable">Disable</option>
             </select>
 
-            <button onclick="saveService()">Save</button>
+            <button id="saveBtn" onclick="saveService()">Save</button>
             <button onclick="closePopup()">Close</button>
         </div>
     </div>
 </div>
 
 <script>
-    function openPopup() {
+    // ------------------------ POPUP CONTROL ------------------------
+    function openAddPopup() {
+        document.getElementById("popup_title").innerText = "Add Service";
+        document.getElementById("saveBtn").setAttribute("onclick", "saveService()");
+        clearFields();
+        showPopup();
+    }
+
+    function openEditPopup(row) {
+        document.getElementById("popup_title").innerText = "Edit Service";
+
+        document.getElementById("service_id").value = row.id;
+        document.getElementById("in_udp").value = row.input_udp;
+        document.getElementById("out_udp").value = row.output_udp;
+        document.getElementById("video_format").value = row.video_format;
+        document.getElementById("audio_format").value = row.audio_format;
+        document.getElementById("resolution").value = row.resolution;
+        document.getElementById("video_bitrate").value = row.video_bitrate;
+        document.getElementById("audio_bitrate").value = row.audio_bitrate;
+        document.getElementById("status").value = row.status;
+
+        document.getElementById("saveBtn").setAttribute("onclick", "updateService()");
+        showPopup();
+    }
+
+    function showPopup() {
         document.getElementById("overlay").style.display = "block";
         document.getElementById("popup").style.display = "block";
     }
@@ -183,35 +251,65 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
         document.getElementById("popup").style.display = "none";
     }
 
-    // ---------- SAVE ----------
+    function clearFields() {
+        document.getElementById("service_id").value = "";
+        document.getElementById("in_udp").value = "";
+        document.getElementById("out_udp").value = "";
+        document.getElementById("video_format").value = "h264";
+        document.getElementById("audio_format").value = "aac";
+        document.getElementById("resolution").value = "1920x1080";
+        document.getElementById("video_bitrate").value = "";
+        document.getElementById("audio_bitrate").value = "";
+        document.getElementById("status").value = "enable";
+    }
+
+    // ------------------------ SAVE ------------------------
     function saveService() {
         let form = new FormData();
         form.append("action", "add");
-        form.append("input_udp", document.getElementById("in_udp").value);
-        form.append("output_udp", document.getElementById("out_udp").value);
-        form.append("video_format", document.getElementById("video_format").value);
-        form.append("audio_format", document.getElementById("audio_format").value);
-        form.append("resolution", document.getElementById("resolution").value);
-        form.append("video_bitrate", document.getElementById("video_bitrate").value);
-        form.append("audio_bitrate", document.getElementById("audio_bitrate").value);
-        form.append("status", document.getElementById("status").value);
+        form.append("input_udp", in_udp.value);
+        form.append("output_udp", out_udp.value);
+        form.append("video_format", video_format.value);
+        form.append("audio_format", audio_format.value);
+        form.append("resolution", resolution.value);
+        form.append("video_bitrate", video_bitrate.value);
+        form.append("audio_bitrate", audio_bitrate.value);
+        form.append("status", status.value);
 
         fetch("input.php", {
                 method: "POST",
-                body: form,
-                credentials: "same-origin"
+                body: form
             })
             .then(r => r.text())
             .then(res => {
-                if (res.includes("OK")) {
-                    location.reload();
-                } else {
-                    alert("Error saving data: " + res);
-                }
+                if (res.includes("OK")) location.reload();
             });
     }
 
-    // ---------- DELETE ----------
+    // ------------------------ UPDATE ------------------------
+    function updateService() {
+        let form = new FormData();
+        form.append("action", "edit");
+        form.append("id", service_id.value);
+        form.append("input_udp", in_udp.value);
+        form.append("output_udp", out_udp.value);
+        form.append("video_format", video_format.value);
+        form.append("audio_format", audio_format.value);
+        form.append("resolution", resolution.value);
+        form.append("video_bitrate", video_bitrate.value);
+        form.append("audio_bitrate", audio_bitrate.value);
+        form.append("status", status.value);
+
+        fetch("input.php", {
+                method: "POST",
+                body: form
+            })
+            .then(r => r.text())
+            .then(res => {
+                if (res.includes("OK")) location.reload();
+            });
+    }
+
     function deleteService(id) {
         if (!confirm("Delete this service?")) return;
 
@@ -221,16 +319,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
 
         fetch("input.php", {
                 method: "POST",
-                body: form,
-                credentials: "same-origin"
+                body: form
             })
             .then(r => r.text())
             .then(res => {
-                if (res.includes("OK")) {
-                    location.reload();
-                } else {
-                    alert("Error deleting: " + res);
-                }
+                if (res.includes("OK")) location.reload();
             });
     }
 </script>
