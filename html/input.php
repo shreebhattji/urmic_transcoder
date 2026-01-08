@@ -35,7 +35,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
             break;
     }
     $ffmpeg .= " -c:a " . $new["audio_format"] . " -b:a " . $new["audio_bitrate"] . "k -ar 48000 -ac 2 -f mpegts udp://@" . $new["output_udp"];
-    file_put_contents("/var/www/encoder/" . $new["id"], $ffmpeg);
+    file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
     exec("sudo systemctl enable encoder@" . $new["id"]);
     exec("sudo systemctl restart encoder@" . $new["id"]);
     echo "OK";
@@ -75,7 +75,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
                 "audio_bitrate" => $_POST["audio_bitrate"],
                 "service" => $_POST["service"]
             ];
-            exec("sudo systemctl restart encoder@" . $id);
+            $new = $row;
+            $ffmpeg = "ffmpeg -fflags +genpts+discardcorrupt -i udp://@" . $new["input_udp"] . "?overrun_nonfatal=1&fifo_size=50000000 ";
+            switch ($new["video_format"]) {
+                case "mpeg2video":
+                    $ffmpeg .= " -vf scale=" . $new["resolution"] . "  -c:v mpeg2video -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
+                    break;
+                case "h264":
+                    $ffmpeg .= " -vf scale=" . $new["resolution"] . "  -c:v h264 -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
+                    break;
+                case "h265":
+                    $ffmpeg .= " -vf scale=" . $new["resolution"] . "  -c:v h265 -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
+                    break;
+            }
+            $ffmpeg .= " -c:a " . $new["audio_format"] . " -b:a " . $new["audio_bitrate"] . "k -ar 48000 -ac 2 -f mpegts udp://@" . $new["output_udp"];
+            file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
+            if ($new["service"] === "enable") {
+                exec("sudo systemctl enable encoder@" . $new["id"]);
+                exec("sudo systemctl restart encoder@" . $new["id"]);
+            } else {
+                exec("sudo systemctl stop encoder@" . $new["id"]);
+                exec("sudo systemctl disable encoder@" . $new["id"]);
+            }
         }
         $newData[] = $row;
     }
