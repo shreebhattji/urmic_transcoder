@@ -28,7 +28,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
     $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -re -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
     switch ($new["video_format"]) {
         case "mpeg2video":
-            $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v mpeg2video -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
+            $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v mpeg2video -pix_fmt yuv420p  -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
             break;
         case "h264":
             $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v h264 -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
@@ -37,7 +37,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
             $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v h265 -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
             break;
     }
-    $ffmpeg .= " -c:a " . $new["audio_format"] . " -b:a " . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4"';
+    $ffmpeg .= " -metadata service_provider=ShreeBhattJI -metadata service_name=".$new["name"]." -c:a " . $new["audio_format"] . " -b:a " . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4"';
 
     file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
 
@@ -107,7 +107,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
                     $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v h265 -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
                     break;
             }
-            $ffmpeg .= " -c:a " . $new["audio_format"] . " -b:a " . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4"';
+            $ffmpeg .= " -metadata service_provider=ShreeBhattJI -metadata service_name=".$new["name"]." -c:a " . $new["audio_format"] . " -b:a " . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4"';
 
             file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
 
