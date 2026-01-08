@@ -6,6 +6,25 @@ cat > /etc/sudoers.d/www-data << 'EOL'
 www-data     ALL=(ALL) NOPASSWD: ALL
 EOL
 
+# graph monitor setup
+cat > /etc/systemd/system/system-monitor.service<< 'EOL'
+[Unit]
+Description=Lightweight System Monitor Sampler by ShreeBhattJi
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/bin/nginx_system_monitor_sampler.py
+Restart=always
+RestartSec=2
+User=root
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
 
 cat > /usr/local/bin/nginx_system_monitor_sampler.py<< 'EOL'
 #!/usr/bin/env python3
@@ -164,6 +183,10 @@ sudo systemctl daemon-reload
 sudo chmod 444 /sys/class/dmi/id/product_uuid
 sudo systemctl disable systemd-networkd-wait-online.service
 sudo systemctl mask systemd-networkd-wait-online.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now system-monitor.service
+sudo systemctl restart --now system-monitor.service
+
 
 sudo ufw default allow outgoing
 sudo ufw default deny incoming
