@@ -49,12 +49,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
             break;
     }
 
-    /* audio volume filter */
-    $ffmpeg .= ' -af "volume=' . $new["volume"] . 'dB"';
+    $ffmpeg .= ' -af volume=' . $new["volume"] . 'dB';
     $ffmpeg .= ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2';
 
     $ffmpeg .= ' -metadata service_provider=ShreeBhattJI -metadata service_name="' . $new["service_name"] . '"';
-    $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316"';
+    $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4&reuse=1&buffer_size=1048576"';
 
     file_put_contents("/var/www/encoder/{$new["id"]}.sh", $ffmpeg);
 
@@ -126,11 +125,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
                     break;
             }
 
-            $ffmpeg .= ' -af "volume=' . $new["volume"] . 'dB"';
+            $ffmpeg .= ' -af volume=' . $new["volume"] . 'dB';
             $ffmpeg .= ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2';
 
             $ffmpeg .= ' -metadata service_provider=ShreeBhattJI -metadata service_name="' . $new["service_name"] . '"';
-            $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316"';
+            $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4&reuse=1&buffer_size=1048576"';
 
             file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
 
@@ -312,9 +311,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
                 <option value="0">0 dB</option>
                 <option value="1">1 dB</option>
                 <option value="2">2 dB</option>
-                <option value="3">0 dB</option>
-                <option value="4">1 dB</option>
-                <option value="5">2 dB</option>
+                <option value="3">3 dB</option>
+                <option value="4">4 dB</option>
+                <option value="5">5 dB</option>
+                <option value="10">10 dB</option>
+                <option value="12">12 dB</option>
+                <option value="15">15 dB</option>
             </select>
 
             <select id="service">
