@@ -1,4 +1,35 @@
 <?php include 'header.php'; ?>
+
+<?php
+
+$jsonFile = __DIR__ . "/input.json";
+if (!file_exists($jsonFile)) {
+    file_put_contents($jsonFile, json_encode([]));
+}
+
+$data = json_decode(file_get_contents($jsonFile), true);
+
+// Handle new service submission (AJAX POST)
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["action"] === "add") {
+    $new = [
+        "id" => time(),
+        "input_udp" => $_POST["input_udp"],
+        "output_udp" => $_POST["output_udp"],
+        "video_format" => $_POST["video_format"],
+        "audio_format" => $_POST["audio_format"],
+        "resolution" => $_POST["resolution"],
+        "video_bitrate" => $_POST["video_bitrate"],
+        "audio_bitrate" => $_POST["audio_bitrate"],
+        "status" => $_POST["status"]
+    ];
+    $data[] = $new;
+    file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
+    echo "OK";
+    exit;
+}
+
+
+?>
 <style>
     body {
         font-family: Arial, sans-serif;
