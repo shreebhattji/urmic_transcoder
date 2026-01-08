@@ -1,5 +1,4 @@
 <?php include 'header.php'; ?>
-
 <?php
 
 $jsonFile = __DIR__ . "/input.json";
@@ -9,7 +8,6 @@ if (!file_exists($jsonFile)) {
 
 $data = json_decode(file_get_contents($jsonFile), true);
 
-// Handle new service submission (AJAX POST)
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["action"] === "add") {
     $new = [
         "id" => time(),
@@ -27,7 +25,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
     echo "OK";
     exit;
 }
-
 
 ?>
 <style>
