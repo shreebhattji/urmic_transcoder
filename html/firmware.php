@@ -162,7 +162,7 @@ EwIDAQAB
 
                 $zip = new ZipArchive();
                 if ($zip->open($zipFile) !== true) {
-                error_log("zip unzip problem");
+                    error_log("zip unzip problem");
                     fail('Unable to open ZIP');
                 }
                 for ($i = 0; $i < $zip->numFiles; $i++) {
@@ -214,19 +214,16 @@ EwIDAQAB
                     unlink($file);
                 }
             }
-            
+
             break;
         case 'reboot':
             exec('sudo reboot');
             break;
         case 'backup':
-
             $jsonFiles = [
                 'input.json',
-                'output.json',
                 'firewall.json',
                 'network.json',
-                'firmware.json',
             ];
 
             $tmpZip = sys_get_temp_dir() . '/backup.zip';
@@ -238,8 +235,6 @@ EwIDAQAB
             $zip = new ZipArchive();
             $zip->open($tmpZip, ZipArchive::CREATE | ZipArchive::OVERWRITE);
 
-
-            /* Add JSON files if exist */
             foreach ($jsonFiles as $json) {
                 if (file_exists($json)) {
                     $zip->addFile($json, basename($json));
@@ -249,11 +244,9 @@ EwIDAQAB
             $zip->close();
             $data = file_get_contents($tmpZip);
 
-            /* Generate AES key */
             $aesKey = random_bytes(32);
             $iv     = random_bytes(16);
 
-            /* Encrypt ZIP */
             $encryptedData = openssl_encrypt(
                 $data,
                 'AES-256-CBC',
@@ -262,10 +255,7 @@ EwIDAQAB
                 $iv
             );
 
-            /* Encrypt AES key using RSA public key */
             openssl_public_encrypt($aesKey, $encryptedKey, $publicKey);
-
-            /* Final binary format */
             $payload = json_encode([
                 'key' => base64_encode($encryptedKey),
                 'iv'  => base64_encode($iv),
@@ -281,7 +271,6 @@ EwIDAQAB
             header('Cache-Control: no-store, no-cache, must-revalidate');
             header('Pragma: no-cache');
             header('Expires: 0');
-
             echo $payload;
             flush();
 
@@ -292,10 +281,8 @@ EwIDAQAB
         case 'restore':
             $jsonFiles = [
                 'input.json',
-                'output.json',
                 'firewall.json',
                 'network.json',
-                'firmware.json',
             ];
 
             foreach ($jsonFiles as $json) {
@@ -372,15 +359,6 @@ EwIDAQAB
             $zip->close();
 
             unlink($tmpZip);
-            update_service("display");
-            update_service("rtmp0");
-            update_service("rtmp1");
-            update_service("udp0");
-            update_service("udp1");
-            update_service("udp2");
-            update_service("srt");
-            update_service("custom");
-            update_service("input");
             break;
     }
 }
