@@ -7,16 +7,16 @@ if (!file_exists($jsonFile)) {
 }
 $data = json_decode(file_get_contents($jsonFile), true);
 
-/* Fix old entries missing service_name */
+/* Fix old entries missing service_name or volume */
 foreach ($data as $k => $d) {
-    if (!isset($d["service_name"])) {
-        $data[$k]["service_name"] = "";
-    }
+    if (!isset($d["service_name"])) $data[$k]["service_name"] = "";
+    if (!isset($d["volume"])) $data[$k]["volume"] = "0";
 }
 file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
-/* ---------------- ADD NEW SERVICE ---------------- */
+/* ---------------- ADD NEW ---------------- */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
+
     $new = [
         "id" => time(),
         "service_name" => $_POST["service_name"],
@@ -27,28 +27,33 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
         "resolution" => $_POST["resolution"],
         "video_bitrate" => $_POST["video_bitrate"],
         "audio_bitrate" => $_POST["audio_bitrate"],
+        "volume" => $_POST["volume"],
         "service" => $_POST["service"]
     ];
 
     $data[] = $new;
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
+    /* ffmpeg build */
     $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -re -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
 
     switch ($new["video_format"]) {
         case "mpeg2video":
-            $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k -bufsize {$new["video_bitrate"]}k";
+            $ffmpeg .= " -vf scale={$new["resolution"]} -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k";
             break;
         case "h264":
-            $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v h264 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k -bufsize {$new["video_bitrate"]}k";
+            $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h264 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k";
             break;
         case "h265":
-            $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v h265 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k -bufsize {$new["video_bitrate"]}k";
+            $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h265 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k";
             break;
     }
 
-    $ffmpeg .= ' -metadata service_provider=ShreeBhattJI -metadata service_name="' . $new["service_name"] . '"';
+    /* audio volume filter */
+    $ffmpeg .= ' -af "volume=' . $new["volume"] . 'dB"';
     $ffmpeg .= ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2';
+
+    $ffmpeg .= ' -metadata service_provider=ShreeBhattJI -metadata service_name="' . $new["service_name"] . '"';
     $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4"';
 
     file_put_contents("/var/www/encoder/{$new["id"]}.sh", $ffmpeg);
@@ -62,8 +67,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
     exit;
 }
 
-/* ---------------- DELETE SERVICE ---------------- */
+/* ---------------- DELETE ---------------- */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
+
     $id = intval($_POST["id"]);
     $newData = [];
 
@@ -75,15 +81,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
     exec("sudo systemctl stop encoder@$id");
     exec("sudo systemctl disable encoder@$id");
 
-    $shFile = "/var/www/encoder/$id.sh";
-    if (file_exists($shFile)) unlink($shFile);
+    if (file_exists("/var/www/encoder/$id.sh")) unlink("/var/www/encoder/$id.sh");
 
     echo "OK";
     exit;
 }
 
-/* ---------------- EDIT SERVICE ---------------- */
+/* ---------------- EDIT ---------------- */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
+
     $id = intval($_POST["id"]);
     $newData = [];
 
@@ -100,6 +106,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
                 "resolution" => $_POST["resolution"],
                 "video_bitrate" => $_POST["video_bitrate"],
                 "audio_bitrate" => $_POST["audio_bitrate"],
+                "volume" => $_POST["volume"],
                 "service" => $_POST["service"]
             ];
 
@@ -109,18 +116,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
 
             switch ($new["video_format"]) {
                 case "mpeg2video":
-                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k -bufsize {$new["video_bitrate"]}k";
+                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k";
                     break;
                 case "h264":
-                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h264 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k -bufsize {$new["video_bitrate"]}k";
+                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h264 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k";
                     break;
                 case "h265":
-                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h265 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k -bufsize {$new["video_bitrate"]}k";
+                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h265 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k";
                     break;
             }
 
-            $ffmpeg .= ' -metadata service_provider=ShreeBhattJI -metadata service_name="' . $new["service_name"] . '"';
+            $ffmpeg .= ' -af "volume=' . $new["volume"] . 'dB"';
             $ffmpeg .= ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2';
+
+            $ffmpeg .= ' -metadata service_provider=ShreeBhattJI -metadata service_name="' . $new["service_name"] . '"';
             $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4"';
 
             file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
@@ -142,7 +151,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
     exit;
 }
 
-/* ---------------- RESTART SERVICE ---------------- */
+/* ---------------- RESTART ---------------- */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
     $id = intval($_POST["id"]);
     exec("sudo systemctl restart encoder@$id");
@@ -164,7 +173,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
 
     .restart-btn {
         background: #ffaa00;
-        color: black;
     }
 
     .delete-btn {
@@ -196,13 +204,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
         background: rgba(0, 0, 0, 0.5);
     }
 
-    input,
-    select {
-        width: 100%;
-        padding: 6px;
-        margin-bottom: 10px;
-    }
-
     table {
         width: 100%;
         border-collapse: collapse;
@@ -213,6 +214,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
     td {
         border: 1px solid #ccc;
         padding: 10px;
+    }
+
+    input,
+    select {
+        width: 100%;
+        padding: 6px;
+        margin-bottom: 10px;
     }
 </style>
 
@@ -226,13 +234,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
             <tr>
                 <th>ID</th>
                 <th>Service Name</th>
-                <th>Input UDP</th>
-                <th>Output UDP</th>
-                <th>Video Format</th>
-                <th>Audio Format</th>
+                <th>Input</th>
+                <th>Output</th>
+                <th>Video</th>
+                <th>Audio</th>
                 <th>Resolution</th>
-                <th>Video Bitrate</th>
-                <th>Audio Bitrate</th>
+                <th>V-Bitrate</th>
+                <th>A-Bitrate</th>
+                <th>Volume (dB)</th>
                 <th>Status</th>
                 <th>Actions</th>
             </tr>
@@ -248,6 +257,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
                     <td><?= $row["resolution"] ?></td>
                     <td><?= $row["video_bitrate"] ?></td>
                     <td><?= $row["audio_bitrate"] ?></td>
+                    <td><?= $row["volume"] ?> dB</td>
                     <td><?= $row["service"] ?></td>
 
                     <td>
@@ -266,7 +276,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
 
             <input type="hidden" id="service_id">
 
-            <input type="text" id="service_name" name="service_name" placeholder="Service Name">
+            <input type="text" id="service_name" placeholder="Service Name">
 
             <input type="text" id="in_udp" placeholder="Input UDP">
             <input type="text" id="out_udp" placeholder="Output UDP">
@@ -290,8 +300,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
                 <option value="1920:1080">1920x1080</option>
             </select>
 
-            <input type="text" id="video_bitrate" placeholder="Video Bitrate (kbps)">
-            <input type="text" id="audio_bitrate" placeholder="Audio Bitrate (kbps)">
+            <input type="text" id="video_bitrate" placeholder="Video Bitrate">
+
+            <input type="text" id="audio_bitrate" placeholder="Audio Bitrate">
+
+            <select id="volume">
+                <option value="-4">-4 dB</option>
+                <option value="-3">-3 dB</option>
+                <option value="-2">-2 dB</option>
+                <option value="-1">-1 dB</option>
+                <option value="0">0 dB</option>
+                <option value="1">1 dB</option>
+                <option value="2">2 dB</option>
+                <option value="3">0 dB</option>
+                <option value="4">1 dB</option>
+                <option value="5">2 dB</option>
+            </select>
 
             <select id="service">
                 <option value="enable">Enable</option>
@@ -300,8 +324,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
 
             <button id="saveBtn" onclick="saveService()">Save</button>
             <button onclick="closePopup()">Close</button>
-        </div>
 
+        </div>
     </div>
 </div>
 
@@ -316,46 +340,46 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
     function openEditPopup(row) {
         document.getElementById("popup_title").innerText = "Edit Service";
 
-        document.getElementById("service_id").value = row.id;
-        document.getElementById("service_name").value = row.service_name;
-
-        document.getElementById("in_udp").value = row.input_udp;
-        document.getElementById("out_udp").value = row.output_udp;
-        document.getElementById("video_format").value = row.video_format;
-        document.getElementById("audio_format").value = row.audio_format;
-        document.getElementById("resolution").value = row.resolution;
-        document.getElementById("video_bitrate").value = row.video_bitrate;
-        document.getElementById("audio_bitrate").value = row.audio_bitrate;
-        document.getElementById("service").value = row.service;
+        service_id.value = row.id;
+        service_name.value = row.service_name;
+        in_udp.value = row.input_udp;
+        out_udp.value = row.output_udp;
+        video_format.value = row.video_format;
+        audio_format.value = row.audio_format;
+        resolution.value = row.resolution;
+        video_bitrate.value = row.video_bitrate;
+        audio_bitrate.value = row.audio_bitrate;
+        volume.value = row.volume;
+        service.value = row.service;
 
         document.getElementById("saveBtn").setAttribute("onclick", "updateService()");
         showPopup();
     }
 
     function showPopup() {
-        document.getElementById("overlay").style.display = "block";
-        document.getElementById("popup").style.display = "block";
+        overlay.style.display = "block";
+        popup.style.display = "block";
     }
 
     function closePopup() {
-        document.getElementById("overlay").style.display = "none";
-        document.getElementById("popup").style.display = "none";
+        overlay.style.display = "none";
+        popup.style.display = "none";
     }
 
     function clearFields() {
-        document.getElementById("service_id").value = "";
-        document.getElementById("service_name").value = "";
-        document.getElementById("in_udp").value = "";
-        document.getElementById("out_udp").value = "";
-        document.getElementById("video_format").value = "h264";
-        document.getElementById("audio_format").value = "aac";
-        document.getElementById("resolution").value = "1920x1080";
-        document.getElementById("video_bitrate").value = "";
-        document.getElementById("audio_bitrate").value = "";
-        document.getElementById("service").value = "enable";
+        service_id.value = "";
+        service_name.value = "";
+        in_udp.value = "";
+        out_udp.value = "";
+        video_format.value = "h264";
+        audio_format.value = "aac";
+        resolution.value = "1920:1080";
+        video_bitrate.value = "";
+        audio_bitrate.value = "";
+        volume.value = "0";
+        service.value = "enable";
     }
 
-    /* SAVE */
     function saveService() {
         let form = new FormData();
         form.append("action", "add");
@@ -367,6 +391,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
         form.append("resolution", resolution.value);
         form.append("video_bitrate", video_bitrate.value);
         form.append("audio_bitrate", audio_bitrate.value);
+        form.append("volume", volume.value);
         form.append("service", service.value);
 
         fetch("input.php", {
@@ -379,7 +404,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
             });
     }
 
-    /* UPDATE */
     function updateService() {
         let form = new FormData();
         form.append("action", "edit");
@@ -393,6 +417,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
         form.append("resolution", resolution.value);
         form.append("video_bitrate", video_bitrate.value);
         form.append("audio_bitrate", audio_bitrate.value);
+        form.append("volume", volume.value);
         form.append("service", service.value);
 
         fetch("input.php", {
@@ -405,9 +430,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
             });
     }
 
-    /* DELETE */
     function deleteService(id) {
-        if (!confirm("Delete this service?")) return;
+        if (!confirm("Delete service?")) return;
 
         let form = new FormData();
         form.append("action", "delete");
@@ -423,9 +447,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
             });
     }
 
-    /* RESTART */
     function restartService(id) {
-        if (!confirm("Restart service?")) return;
+        if (!confirm("Restart?")) return;
 
         let form = new FormData();
         form.append("action", "restart");
