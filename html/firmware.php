@@ -208,7 +208,7 @@ EwIDAQAB
             }
             break;
         case 'reset':
-            $files = glob('/var/www/encoder/*.json');
+            $files = glob('/var/www/html/*.json');
             foreach ($files as $file) {
                 if (is_file($file)) {
                     unlink($file);

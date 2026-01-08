@@ -37,7 +37,7 @@ from collections import deque
 from datetime import datetime
 import psutil
 
-OUT_FILE = "/var/www/encoder/metrics.json"
+OUT_FILE = "/var/www/html/metrics.json"
 TMP_FILE = OUT_FILE + ".tmp"
 SAMPLE_INTERVAL = 10.0               # seconds between samples
 HISTORY_SECONDS = 15 * 60           # 15 minutes
