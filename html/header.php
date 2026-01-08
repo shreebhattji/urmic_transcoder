@@ -432,7 +432,6 @@ include 'static.php';
 </head>
 
 <body>
-    <!-- Three stacked headers -->
     <header class="top-header-1"><a href="index.php" style="color:white; text-decoration:none;">URMI Universal Digital Encoder / Decoder</a></header>
     <header class="top-header-2">
         <nav aria-label="Top navigation">
@@ -443,10 +442,9 @@ include 'static.php';
         </nav>
     </header>
 
-    <!-- Main navigation header -->
     <header class="site-header">
         <nav aria-label="Top navigation">
-            <a href="status.php">Status</a>
+            <a href="input.php">Input</a>
             <a href="index.php">Monitor</a>
             <a href="firewall.php">Firewall</a>
             <a href="firmware.php">Firmware</a>
