@@ -7,11 +7,19 @@ if (!file_exists($jsonFile)) {
 }
 $data = json_decode(file_get_contents($jsonFile), true);
 
+/* Fix old entries missing service_name */
+foreach ($data as $k => $d) {
+    if (!isset($d["service_name"])) {
+        $data[$k]["service_name"] = "";
+    }
+}
+file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
+
 /* ---------------- ADD NEW SERVICE ---------------- */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
     $new = [
         "id" => time(),
-        "name" => $_POST["name"],
+        "service_name" => $_POST["service_name"],
         "input_udp" => $_POST["input_udp"],
         "output_udp" => $_POST["output_udp"],
         "video_format" => $_POST["video_format"],
@@ -26,24 +34,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
     $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -re -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
+
     switch ($new["video_format"]) {
         case "mpeg2video":
-            $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v mpeg2video -pix_fmt yuv420p  -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
+            $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k -bufsize {$new["video_bitrate"]}k";
             break;
         case "h264":
-            $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v h264 -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
+            $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v h264 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k -bufsize {$new["video_bitrate"]}k";
             break;
         case "h265":
-            $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v h265 -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
+            $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v h265 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k -bufsize {$new["video_bitrate"]}k";
             break;
     }
-    $ffmpeg .= " -metadata service_provider=ShreeBhattJI -metadata service_name=" . $new["name"] . " -c:a " . $new["audio_format"] . " -b:a " . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4"';
 
-    file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
+    $ffmpeg .= ' -metadata service_provider=ShreeBhattJI -metadata service_name="' . $new["service_name"] . '"';
+    $ffmpeg .= ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2';
+    $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4"';
+
+    file_put_contents("/var/www/encoder/{$new["id"]}.sh", $ffmpeg);
 
     if ($new["service"] === "enable") {
-        exec("sudo systemctl enable encoder@" . $new["id"]);
-        exec("sudo systemctl restart encoder@" . $new["id"]);
+        exec("sudo systemctl enable encoder@{$new["id"]}");
+        exec("sudo systemctl restart encoder@{$new["id"]}");
     }
 
     echo "OK";
@@ -60,13 +72,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
     }
 
     file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
+    exec("sudo systemctl stop encoder@$id");
+    exec("sudo systemctl disable encoder@$id");
 
-    exec("sudo systemctl stop encoder@" . $id);
-    exec("sudo systemctl disable encoder@" . $id);
-
-    if (file_exists("/var/www/encoder/" . $id . ".sh")) {
-        unlink("/var/www/encoder/" . $id . ".sh");
-    }
+    $shFile = "/var/www/encoder/$id.sh";
+    if (file_exists($shFile)) unlink($shFile);
 
     echo "OK";
     exit;
@@ -82,7 +92,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
 
             $row = [
                 "id" => $id,
-                "name" => $_POST["name"],
+                "service_name" => $_POST["service_name"],
                 "input_udp" => $_POST["input_udp"],
                 "output_udp" => $_POST["output_udp"],
                 "video_format" => $_POST["video_format"],
@@ -96,29 +106,34 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
             $new = $row;
 
             $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -re -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
+
             switch ($new["video_format"]) {
                 case "mpeg2video":
-                    $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v mpeg2video -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
+                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k -bufsize {$new["video_bitrate"]}k";
                     break;
                 case "h264":
-                    $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v h264 -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
+                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h264 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k -bufsize {$new["video_bitrate"]}k";
                     break;
                 case "h265":
-                    $ffmpeg .= " -vf scale=" . $new["resolution"] . " -c:v h265 -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
+                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h265 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k -bufsize {$new["video_bitrate"]}k";
                     break;
             }
-            $ffmpeg .= " -metadata service_provider=ShreeBhattJI -metadata service_name=" . $new["name"] . " -c:a " . $new["audio_format"] . " -b:a " . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4"';
 
-            file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
+            $ffmpeg .= ' -metadata service_provider=ShreeBhattJI -metadata service_name="' . $new["service_name"] . '"';
+            $ffmpeg .= ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2';
+            $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4"';
+
+            file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
 
             if ($new["service"] === "enable") {
-                exec("sudo systemctl enable encoder@" . $new["id"]);
-                exec("sudo systemctl restart encoder@" . $new["id"]);
+                exec("sudo systemctl enable encoder@$id");
+                exec("sudo systemctl restart encoder@$id");
             } else {
-                exec("sudo systemctl stop encoder@" . $new["id"]);
-                exec("sudo systemctl disable encoder@" . $new["id"]);
+                exec("sudo systemctl stop encoder@$id");
+                exec("sudo systemctl disable encoder@$id");
             }
         }
+
         $newData[] = $row;
     }
 
@@ -130,7 +145,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
 /* ---------------- RESTART SERVICE ---------------- */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
     $id = intval($_POST["id"]);
-    exec("sudo systemctl restart encoder@" . $id);
+    exec("sudo systemctl restart encoder@$id");
     echo "OK";
     exit;
 }
@@ -210,7 +225,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
         <table>
             <tr>
                 <th>ID</th>
-                <th>Name</th>
+                <th>Service Name</th>
                 <th>Input UDP</th>
                 <th>Output UDP</th>
                 <th>Video Format</th>
@@ -218,14 +233,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
                 <th>Resolution</th>
                 <th>Video Bitrate</th>
                 <th>Audio Bitrate</th>
-                <th>Service</th>
+                <th>Status</th>
                 <th>Actions</th>
             </tr>
 
             <?php foreach ($data as $row): ?>
                 <tr>
                     <td><?= $row["id"] ?></td>
-                    <td><?= $row["name"] ?></td>
+                    <td><?= $row["service_name"] ?></td>
                     <td><?= $row["input_udp"] ?></td>
                     <td><?= $row["output_udp"] ?></td>
                     <td><?= $row["video_format"] ?></td>
@@ -251,7 +266,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
 
             <input type="hidden" id="service_id">
 
-            <input type="text" id="name" name="name" placeholder="Service Name">
+            <input type="text" id="service_name" name="service_name" placeholder="Service Name">
 
             <input type="text" id="in_udp" placeholder="Input UDP">
             <input type="text" id="out_udp" placeholder="Output UDP">
@@ -286,6 +301,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
             <button id="saveBtn" onclick="saveService()">Save</button>
             <button onclick="closePopup()">Close</button>
         </div>
+
     </div>
 </div>
 
@@ -301,7 +317,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
         document.getElementById("popup_title").innerText = "Edit Service";
 
         document.getElementById("service_id").value = row.id;
-        document.getElementById("name").value = row.name;
+        document.getElementById("service_name").value = row.service_name;
 
         document.getElementById("in_udp").value = row.input_udp;
         document.getElementById("out_udp").value = row.output_udp;
@@ -328,7 +344,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
 
     function clearFields() {
         document.getElementById("service_id").value = "";
-        document.getElementById("name").value = "";
+        document.getElementById("service_name").value = "";
         document.getElementById("in_udp").value = "";
         document.getElementById("out_udp").value = "";
         document.getElementById("video_format").value = "h264";
@@ -339,11 +355,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
         document.getElementById("service").value = "enable";
     }
 
-    /* ------------ SAVE ------------ */
+    /* SAVE */
     function saveService() {
         let form = new FormData();
         form.append("action", "add");
-        form.append("name", name.value);
+        form.append("service_name", service_name.value);
         form.append("input_udp", in_udp.value);
         form.append("output_udp", out_udp.value);
         form.append("video_format", video_format.value);
@@ -363,13 +379,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
             });
     }
 
-    /* ------------ UPDATE ------------ */
+    /* UPDATE */
     function updateService() {
         let form = new FormData();
         form.append("action", "edit");
         form.append("id", service_id.value);
 
-        form.append("name", name.value);
+        form.append("service_name", service_name.value);
         form.append("input_udp", in_udp.value);
         form.append("output_udp", out_udp.value);
         form.append("video_format", video_format.value);
@@ -389,7 +405,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
             });
     }
 
-    /* ------------ DELETE ------------ */
+    /* DELETE */
     function deleteService(id) {
         if (!confirm("Delete this service?")) return;
 
@@ -407,7 +423,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
             });
     }
 
-    /* ------------ RESTART ------------ */
+    /* RESTART */
     function restartService(id) {
         if (!confirm("Restart service?")) return;
 
