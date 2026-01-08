@@ -185,23 +185,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
             <input type="text" id="out_udp" placeholder="Output UDP">
 
             <select id="video_format">
+                <option value="mpeg2video">MPEG2</option>
                 <option value="h264">H.264</option>
                 <option value="h265">H.265</option>
             </select>
 
             <select id="audio_format">
-                <option value="aac">AAC</option>
+                <option value="mp2">MP2</option>
                 <option value="mp3">MP3</option>
+                <option value="aac">AAC</option>
+                <option value="ac3">AC3</option>
             </select>
 
             <select id="resolution">
-                <option value="1920x1080">1920x1080</option>
-                <option value="1280x720">1280x720</option>
                 <option value="720x576">720x576</option>
+                <option value="1280x720">1280x720</option>
+                <option value="1920x1080">1920x1080</option>
             </select>
 
-            <input type="text" id="video_bitrate" placeholder="Video Bitrate (kbps)">
-            <input type="text" id="audio_bitrate" placeholder="Audio Bitrate (kbps)">
+            <input type="text" id="video_bitrate" placeholder="Video Bitrate (kbps)" value="3000">
+            <input type="text" id="audio_bitrate" placeholder="Audio Bitrate (kbps)" value="256">
 
             <select id="service">
                 <option value="enable">Enable</option>
