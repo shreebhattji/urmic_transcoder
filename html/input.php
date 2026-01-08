@@ -326,9 +326,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
 
             <button id="saveBtn" onclick="saveService()">Save</button>
             <button onclick="closePopup()">Close</button>
+            <br>
 
         </div>
+        <br>
     </div>
+    <br>
 </div>
 
 <script>
