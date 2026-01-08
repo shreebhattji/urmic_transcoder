@@ -53,7 +53,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
     file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
     exec("sudo systemctl stop encoder@" . $id);
     exec("sudo systemctl disable encoder@" . $id);
-    unlink("/var/www/encoder/" . $id);
+    unlink("/var/www/encoder/" . $id . ".sh");
     echo "OK";
     exit;
 }
@@ -76,7 +76,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
                 "service" => $_POST["service"]
             ];
             $new = $row;
-            $ffmpeg = "ffmpeg -fflags +genpts+discardcorrupt -i udp://@" . $new["input_udp"] . "?overrun_nonfatal=1&fifo_size=50000000 ";
+            $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
             switch ($new["video_format"]) {
                 case "mpeg2video":
                     $ffmpeg .= " -vf scale=" . $new["resolution"] . "  -c:v mpeg2video -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . "k -maxrate " . $new["video_bitrate"] . "k -minrate " . $new["video_bitrate"] . "k -bufsize " . $new["video_bitrate"] . "k";
