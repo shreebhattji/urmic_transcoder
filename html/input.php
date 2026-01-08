@@ -111,17 +111,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
 
             $new = $row;
 
-            $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -re -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
+            $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -flags2 +showall -err_detect ignore_err -re -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
 
             switch ($new["video_format"]) {
                 case "mpeg2video":
-                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k";
+                    $ffmpeg .= " -vf scale={$new["resolution"]} -bf 2  -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
                     break;
                 case "h264":
-                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h264 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k";
+                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h264 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
                     break;
                 case "h265":
-                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h265 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k";
+                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h265 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
                     break;
             }
 
