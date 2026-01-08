@@ -43,7 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
 }
 ?>
 <style>
-    <style>body {
+    body {
         font-family: Arial;
         padding: 20px;
     }
