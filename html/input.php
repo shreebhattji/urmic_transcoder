@@ -54,7 +54,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
     $ffmpeg .= ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2';
 
     $ffmpeg .= ' -metadata service_provider=ShreeBhattJI -metadata service_name="' . $new["service_name"] . '"';
-    $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4"';
+    $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316"';
 
     file_put_contents("/var/www/encoder/{$new["id"]}.sh", $ffmpeg);
 
@@ -130,7 +130,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
             $ffmpeg .= ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2';
 
             $ffmpeg .= ' -metadata service_provider=ShreeBhattJI -metadata service_name="' . $new["service_name"] . '"';
-            $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4"';
+            $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316"';
 
             file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
 
