@@ -7,9 +7,6 @@ if (!file_exists($jsonFile)) {
 }
 $data = json_decode(file_get_contents($jsonFile), true);
 
-// ----------------------------------------------------
-// ADD SERVICE
-// ----------------------------------------------------
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
     $new = [
         "id" => time(),
@@ -25,13 +22,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
 
     $data[] = $new;
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
+    $ffmpeg = "ffmpeg -fflags +genpts+discardcorrupt -i udp://@" . $new["input_udp"] . "?overrun_nonfatal=1&fifo_size=50000000 ";
+    switch ($new["video_format"]) {
+        case "mpeg2video":
+            $ffmpeg .= " -vf scale=" . $new["resolution"] . "  -c:v mpeg2video -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . " -maxrate " . $new["video_bitrate"] . " -minrate " . $new["video_bitrate"] . " -bufsize " . $new["video_bitrate"];
+            break;
+        case "h264":
+            $ffmpeg .= " -vf scale=" . $new["resolution"] . "  -c:v h264 -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . " -maxrate " . $new["video_bitrate"] . " -minrate " . $new["video_bitrate"] . " -bufsize " . $new["video_bitrate"];
+            break;
+        case "h265":
+            $ffmpeg .= " -vf scale=" . $new["resolution"] . "  -c:v h265 -pix_fmt yuv420p -b:v " . $new["video_bitrate"] . " -maxrate " . $new["video_bitrate"] . " -minrate " . $new["video_bitrate"] . " -bufsize " . $new["video_bitrate"];
+            break;
+    }
+    $ffmpeg .= " -c:a " . $new["audio_format"] . " -b:a " . $new["audio_bitrate"] . " -ar 48000 -ac 2 -f mpegts udp://@" . $new["output_udp"];
+    exec("sudo systemctl enable encoder@" . $new["id"]);
+    exec("sudo systemctl restart encoder@" . $new["id"]);
     echo "OK";
     exit;
 }
 
-// ----------------------------------------------------
-// DELETE SERVICE
-// ----------------------------------------------------
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
     $id = intval($_POST["id"]);
     $newData = [];
@@ -41,13 +50,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
     }
 
     file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
+    exec("sudo systemctl stop encoder@" . $id);
+    exec("sudo systemctl disable encoder@" . $id);
+    unlink("/var/www/encoder/" . $id);
     echo "OK";
     exit;
 }
 
-// ----------------------------------------------------
-// UPDATE SERVICE
-// ----------------------------------------------------
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
     $id = intval($_POST["id"]);
     $newData = [];
@@ -65,6 +74,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
                 "audio_bitrate" => $_POST["audio_bitrate"],
                 "service" => $_POST["service"]
             ];
+            exec("sudo systemctl restart encoder@" . $id);
         }
         $newData[] = $row;
     }
@@ -178,7 +188,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
 
         <div id="popup">
             <h3 id="popup_title">Add Service</h3>
-
             <input type="hidden" id="service_id">
 
             <input type="text" id="in_udp" placeholder="Input UDP">
@@ -198,13 +207,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
             </select>
 
             <select id="resolution">
-                <option value="720x576">720x576</option>
-                <option value="1280x720">1280x720</option>
-                <option value="1920x1080">1920x1080</option>
+                <option value="720:576">720x576</option>
+                <option value="1280:720">1280x720</option>
+                <option value="1920:1080">1920x1080</option>
             </select>
 
-            <input type="text" id="video_bitrate" placeholder="Video Bitrate (kbps)" value="3000">
-            <input type="text" id="audio_bitrate" placeholder="Audio Bitrate (kbps)" value="256">
+            <input type="text" id="video_bitrate" placeholder="Video Bitrate (kbps)">
+            <input type="text" id="audio_bitrate" placeholder="Audio Bitrate (kbps)">
 
             <select id="service">
                 <option value="enable">Enable</option>

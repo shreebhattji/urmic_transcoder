@@ -125,6 +125,23 @@ network:
       - 172.16.111.111/24
 EOL
 
+cat >/etc/systemd/system/encoder@.service<< 'EOL'
+[Unit]
+Description=Encoder Instance %i
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/bin/bash /var/www/encoder/%i.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+sudo mkdir /var/www/encoder
 sudo cp -r html/* /var/www/html/
 sudo cp backup_private.pem /var/www/
 sudo cp backup_public.pem /var/www/
@@ -160,3 +177,7 @@ sudo ufw allow from 172.16.111.112 to 172.16.111.111 port 443
 sudo ufw --force enable
 DEVICE_ID="$(sudo cat /sys/class/dmi/id/product_uuid | tr -d '\n')"
 sudo sed -i 's/certificatecertificatecertificatecertificate/'$DEVICE_ID'/g' /var/www/html/certification.html
+
+sudo chmod 777 -R /var/www
+sudo chown -R www-data:www-data /var/www
+sudo systemctl daemon-reload
