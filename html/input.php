@@ -35,6 +35,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
             break;
     }
     $ffmpeg .= " -c:a " . $new["audio_format"] . " -b:a " . $new["audio_bitrate"] . " -ar 48000 -ac 2 -f mpegts udp://@" . $new["output_udp"];
+    file_put_contents("/var/www/encoder/" . $id, $ffmpeg);
     exec("sudo systemctl enable encoder@" . $new["id"]);
     exec("sudo systemctl restart encoder@" . $new["id"]);
     echo "OK";
