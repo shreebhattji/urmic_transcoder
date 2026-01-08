@@ -53,77 +53,77 @@
     }
 </style>
 </head>
-<br>
-<br>
-<br>
-<br>
-<h2>Service List</h2>
-<button onclick="openPopup()">Add Service</button>
+<div class="containerindex">
+    <div class="grid">
+        <h2>Service List</h2>
+        <button onclick="openPopup()">Add Service</button>
 
-<!-- TABLE LIST -->
-<table class="table">
-    <tr>
-        <th>ID</th>
-        <th>Input UDP</th>
-        <th>Output UDP</th>
-        <th>Video Format</th>
-        <th>Audio Format</th>
-        <th>Resolution</th>
-        <th>Video Bitrate</th>
-        <th>Audio Bitrate</th>
-        <th>Status</th>
-    </tr>
+        <!-- TABLE LIST -->
+        <table class="table">
+            <tr>
+                <th>ID</th>
+                <th>Input UDP</th>
+                <th>Output UDP</th>
+                <th>Video Format</th>
+                <th>Audio Format</th>
+                <th>Resolution</th>
+                <th>Video Bitrate</th>
+                <th>Audio Bitrate</th>
+                <th>Status</th>
+            </tr>
 
-    <?php foreach ($data as $row): ?>
-        <tr>
-            <td><?= htmlspecialchars($row["id"]) ?></td>
-            <td><?= htmlspecialchars($row["input_udp"]) ?></td>
-            <td><?= htmlspecialchars($row["output_udp"]) ?></td>
-            <td><?= htmlspecialchars($row["video_format"]) ?></td>
-            <td><?= htmlspecialchars($row["audio_format"]) ?></td>
-            <td><?= htmlspecialchars($row["resolution"]) ?></td>
-            <td><?= htmlspecialchars($row["video_bitrate"]) ?></td>
-            <td><?= htmlspecialchars($row["audio_bitrate"]) ?></td>
-            <td><?= htmlspecialchars($row["status"]) ?></td>
-        </tr>
-    <?php endforeach; ?>
-</table>
+            <?php foreach ($data as $row): ?>
+                <tr>
+                    <td><?= htmlspecialchars($row["id"]) ?></td>
+                    <td><?= htmlspecialchars($row["input_udp"]) ?></td>
+                    <td><?= htmlspecialchars($row["output_udp"]) ?></td>
+                    <td><?= htmlspecialchars($row["video_format"]) ?></td>
+                    <td><?= htmlspecialchars($row["audio_format"]) ?></td>
+                    <td><?= htmlspecialchars($row["resolution"]) ?></td>
+                    <td><?= htmlspecialchars($row["video_bitrate"]) ?></td>
+                    <td><?= htmlspecialchars($row["audio_bitrate"]) ?></td>
+                    <td><?= htmlspecialchars($row["status"]) ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
 
-<!-- POPUP -->
-<div id="overlay"></div>
+        <!-- POPUP -->
+        <div id="overlay"></div>
 
-<div id="popup">
-    <h3>Add Service</h3>
+        <div id="popup">
+            <h3>Add Service</h3>
 
-    <input type="text" id="in_udp" placeholder="Input UDP">
-    <input type="text" id="out_udp" placeholder="Output UDP">
+            <input type="text" id="in_udp" placeholder="Input UDP">
+            <input type="text" id="out_udp" placeholder="Output UDP">
 
-    <select id="video_format">
-        <option value="h264">H.264</option>
-        <option value="h265">H.265</option>
-    </select>
+            <select id="video_format">
+                <option value="h264">H.264</option>
+                <option value="h265">H.265</option>
+            </select>
 
-    <select id="audio_format">
-        <option value="aac">AAC</option>
-        <option value="mp3">MP3</option>
-    </select>
+            <select id="audio_format">
+                <option value="aac">AAC</option>
+                <option value="mp3">MP3</option>
+            </select>
 
-    <select id="resolution">
-        <option value="1920x1080">1920x1080</option>
-        <option value="1280x720">1280x720</option>
-        <option value="720x576">720x576</option>
-    </select>
+            <select id="resolution">
+                <option value="1920x1080">1920x1080</option>
+                <option value="1280x720">1280x720</option>
+                <option value="720x576">720x576</option>
+            </select>
 
-    <input type="text" id="video_bitrate" placeholder="Video Bitrate (kbps)">
-    <input type="text" id="audio_bitrate" placeholder="Audio Bitrate (kbps)">
+            <input type="text" id="video_bitrate" placeholder="Video Bitrate (kbps)">
+            <input type="text" id="audio_bitrate" placeholder="Audio Bitrate (kbps)">
 
-    <select id="status">
-        <option value="enable">Enable</option>
-        <option value="disable">Disable</option>
-    </select>
+            <select id="status">
+                <option value="enable">Enable</option>
+                <option value="disable">Disable</option>
+            </select>
 
-    <button onclick="saveService()">Save</button>
-    <button onclick="closePopup()">Close</button>
+            <button onclick="saveService()">Save</button>
+            <button onclick="closePopup()">Close</button>
+        </div>
+    </div>
 </div>
 
 <script>
