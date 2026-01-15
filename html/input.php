@@ -33,12 +33,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
 
     $data[] = $new;
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
-    $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -max_delay 500000 -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
+    $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -re -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
     $ffmpeg .= " -vf scale={$new["resolution"]} -g 12 -bf 2 -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
     $ffmpeg .= ' -af volume=' . $new["volume"] . 'dB';
     $ffmpeg .= ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2';
 
-    $ffmpeg .= ' -metadata service_provider=ShreeBhattJI -metadata service_name="' . $new["service_name"] . '"';
+    if ($new["service_name"] !== "")
+        $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '"';
+    $ffmpeg .= ' -metadata service_provider=ShreeBhattJI ';
     $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4&reuse=1&buffer_size=1048576"';
 
     file_put_contents("/var/www/encoder/{$new["id"]}.sh", $ffmpeg);
@@ -96,12 +98,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
 
             $new = $row;
 
-            $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -max_delay 500000 -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
+            $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -re -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
             $ffmpeg .= " -vf scale={$new["resolution"]} -g 12 -bf 2 -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
             $ffmpeg .= ' -af volume=' . $new["volume"] . 'dB';
             $ffmpeg .= ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2';
 
-            $ffmpeg .= ' -metadata service_provider=ShreeBhattJI -metadata service_name="' . $new["service_name"] . '"';
+            if ($new["service_name"] !== "")
+                $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '"';
+            $ffmpeg .= ' -metadata service_provider=ShreeBhattJI ';
             $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4&reuse=1&buffer_size=1048576"';
 
             file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
