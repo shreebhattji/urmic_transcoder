@@ -1,0 +1,19 @@
+cat >/etc/netplan/50-cloud-init.yaml<< 'EOL'
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eno1:
+      dhcp4: false
+      addresses:
+        - 103.204.167.43/29
+      routes:
+        - to: 0.0.0.0/0
+          via: 103.204.167.33
+      nameservers:
+        addresses:
+          - 8.8.8.8
+          - 1.1.1.1
+      dhcp6: false
+      accept-ra: false
+EOL
