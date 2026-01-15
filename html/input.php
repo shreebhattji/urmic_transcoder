@@ -33,22 +33,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
 
     $data[] = $new;
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
-
-    /* ffmpeg build */
-    $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -re -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
-
-    switch ($new["video_format"]) {
-        case "mpeg2video":
-            $ffmpeg .= " -vf scale={$new["resolution"]} -bf 2 -g 25 -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
-            break;
-        case "h264":
-            $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h264 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k";
-            break;
-        case "h265":
-            $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h265 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k";
-            break;
-    }
-
+    $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -reorder_queue_size 512 -re -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
+    $ffmpeg .= " -vf scale={$new["resolution"]} -g 12 -bf 2 -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
     $ffmpeg .= ' -af volume=' . $new["volume"] . 'dB';
     $ffmpeg .= ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2';
 
@@ -61,7 +47,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
         exec("sudo systemctl enable encoder@{$new["id"]}");
         exec("sudo systemctl restart encoder@{$new["id"]}");
     }
-
     echo "OK";
     exit;
 }
@@ -111,20 +96,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
 
             $new = $row;
 
-            $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -flags2 +showall -err_detect ignore_err -re -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
-
-            switch ($new["video_format"]) {
-                case "mpeg2video":
-                    $ffmpeg .= " -vf scale={$new["resolution"]} -bf 2 -g 25  -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
-                    break;
-                case "h264":
-                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h264 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
-                    break;
-                case "h265":
-                    $ffmpeg .= " -vf scale={$new["resolution"]} -c:v h265 -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
-                    break;
-            }
-
+            $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -reorder_queue_size 512 -re -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
+            $ffmpeg .= " -vf scale={$new["resolution"]} -g 12 -bf 2 -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
             $ffmpeg .= ' -af volume=' . $new["volume"] . 'dB';
             $ffmpeg .= ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2';
 
@@ -281,16 +254,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
             <input type="text" id="out_udp" placeholder="Output UDP">
 
             <select id="video_format">
-                <option value="mpeg2video">MPEG2</option>
-                <option value="h264">H.264</option>
-                <option value="h265">H.265</option>
+                <option value="mpeg2video" selected>MPEG2</option>
             </select>
 
             <select id="audio_format">
-                <option value="mp2">MP2</option>
-                <option value="mp3">MP3</option>
-                <option value="aac">AAC</option>
-                <option value="ac3">AC3</option>
+                <option value="mp2" selected>MP2</option>
             </select>
 
             <select id="resolution">
