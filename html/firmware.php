@@ -227,7 +227,7 @@ EwIDAQAB
             ];
 
             $tmpZip = sys_get_temp_dir() . '/backup.zip';
-            $outputFile = __DIR__ . '/universal_encoder_decoder.bin';
+            $outputFile = __DIR__ . '/universal_transcoder.bin';
 
             $publicKey = file_get_contents('/var/www/backup_private.pem');
             $publicKey = file_get_contents('/var/www/backup_public.pem');
@@ -262,7 +262,7 @@ EwIDAQAB
                 'data' => base64_encode($encryptedData)
             ]);
 
-            $filename = 'universal_encoder_decoder.bin';
+            $filename = 'universal_transcoder.bin';
 
             header('Content-Description: File Transfer');
             header('Content-Type: application/octet-stream');
@@ -281,8 +281,6 @@ EwIDAQAB
         case 'restore':
             $jsonFiles = [
                 'input.json',
-                'firewall.json',
-                'network.json',
             ];
 
             foreach ($jsonFiles as $json) {
