@@ -125,9 +125,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
     $data[] = $new;
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
-    $alloc = allocateCore($id);
-    $node  = $alloc["node"];
-    $core  = $alloc["cpu"];
+    $alloc = getServiceCore($id);
+    if ($alloc === null) {
+        $alloc = allocateCore($id);
+    }
+
+    $core = (int)$alloc["cpu"];
+    $node = (int)$alloc["node"];
 
     $ffmpeg = 'numactl --cpunodebind=' . $node .
         ' --membind=' . $node .
@@ -220,12 +224,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
             ];
 
             $new = $row;
-            $core = getServiceCore($id);
-            if ($core === null) {
-                $core = allocateCore($id);
+            $alloc = getServiceCore($id);
+            if ($alloc === null) {
+                $alloc = allocateCore($id);
             }
 
-            $ffmpeg = 'taskset -c ' . $core . ' ffmpeg -hide_banner -loglevel info \
+            $core = (int)$alloc["cpu"];
+            $node = (int)$alloc["node"];
+
+
+            $ffmpeg = 'numactl --cpunodebind=' . $node .
+                ' --membind=' . $node .
+                ' taskset -c ' . $core . ' ffmpeg -hide_banner -loglevel info \
  -thread_queue_size 65536 \
  -fflags +genpts+discardcorrupt+nobuffer \
  -readrate 1.0 \
