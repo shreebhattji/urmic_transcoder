@@ -18,22 +18,43 @@ function allocateCore(int $serviceId): int
 {
     global $coreFile;
 
-    $cores = json_decode(file_get_contents($coreFile), true);
-    $used = array_values($cores);
+    $map = json_decode(file_get_contents($coreFile), true) ?: [];
     $total = getTotalCores();
 
-    for ($i = 0; $i < $total; $i++) {
-        if (!in_array($i, $used, true)) {
-            $cores[$serviceId] = $i;
-            file_put_contents($coreFile, json_encode($cores, JSON_PRETTY_PRINT));
-            return $i;
+    if ($total < 2) {
+        $map[$serviceId] = 0;
+        file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
+        return 0;
+    }
+
+    $half = intdiv($total, 2);
+
+    /*
+     Build desired order:
+     0, half, 1, half+1, 2, half+2, ...
+    */
+    $order = [];
+    for ($i = 0; $i < $half; $i++) {
+        $order[] = $i;
+        if (($i + $half) < $total) {
+            $order[] = $i + $half;
         }
     }
 
-    /* fallback: round-robin */
-    $core = $serviceId % $total;
-    $cores[$serviceId] = $core;
-    file_put_contents($coreFile, json_encode($cores, JSON_PRETTY_PRINT));
+    $used = array_values($map);
+
+    foreach ($order as $core) {
+        if (!in_array($core, $used, true)) {
+            $map[$serviceId] = $core;
+            file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
+            return $core;
+        }
+    }
+
+    /* Fallback (should never hit unless fully occupied) */
+    $core = $order[count($map) % count($order)];
+    $map[$serviceId] = $core;
+    file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
     return $core;
 }
 
@@ -309,10 +330,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
 
 <div class="containerindex">
     <div class="grid">
+        <div class="card wide">
 
-        <h2>Service List</h2>
-        <button onclick="openAddPopup()">Add Service</button>
-
+            <h2>Service List</h2>
+            <button onclick="openAddPopup()">Add Service</button>
+            <button>Start All</button>
+            <button>Stop All</button>
+            <button>Update All</button>
+        </div>
         <table>
             <tr>
                 <th>ID</th>
