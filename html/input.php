@@ -40,7 +40,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
  -fflags +genpts+discardcorrupt+nobuffer \
  -flags +low_delay \
  -i "udp://@' . $new["input_udp"] . '?fifo_size=50000000&buffer_size=50000000&overrun_nonfatal=1" \
- -vf "scale=:' . $new["resolution"] . ',format=yuv420p" \
+ -vf "scale=' . $new["resolution"] . ',format=yuv420p" \
  -c:v ' . $new["video_format"] . ' \
  -threads 1 \
  -r 25 \
@@ -124,7 +124,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
  -fflags +genpts+discardcorrupt+nobuffer \
  -flags +low_delay \
  -i "udp://@' . $new["input_udp"] . '?fifo_size=50000000&buffer_size=50000000&overrun_nonfatal=1" \
- -vf "scale=:' . $new["resolution"] . ',format=yuv420p" \
+ -vf "scale=' . $new["resolution"] . ',format=yuv420p" \
  -c:v ' . $new["video_format"] . ' \
  -threads 1 \
  -r 25 \
