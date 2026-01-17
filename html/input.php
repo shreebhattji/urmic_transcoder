@@ -35,8 +35,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
     $ffmpeg = 'ffmpeg -hide_banner -loglevel error \
- -thread_queue_size 8192 \
- -re \
+ -thread_queue_size 16384 \
  -fflags +genpts+discardcorrupt+nobuffer \
  -flags +low_delay \
  -i "udp://@' . $new["input_udp"] . '?fifo_size=50000000&buffer_size=50000000&overrun_nonfatal=1" \
@@ -44,18 +43,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
  -c:v ' . $new["video_format"] . ' \
  -threads 1 \
  -r 25 \
- -g 25 \
+ -g 50 \
  -bf 0 \
- -qmin 2 -qmax 31 \
+ -qmin 3 -qmax 35 \
  -me_method dia \
  -subq 0 \
  -b:v ' . $new["video_bitrate"] . 'k \
  -minrate ' . $new["video_bitrate"] . 'k \
  -maxrate ' . $new["video_bitrate"] . 'k \
  -bufsize ' . ((int)$new["video_bitrate"] * 2) . 'k \
- -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 \
- -af "volume=' . $new["volume"] . 'dB,aresample=async=1000"';
-    $ffmpeg .= ' -metadata service_provider=ShreeBhattJI ';
+ -c:a ' . $new["audio_format"] . ' \
+ -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 \
+ -af "volume=' . $new["volume"] . 'dB,aresample=async=1000" \
+ -metadata service_provider="ShreeBhattJI" ';
+    if ($new["service_name"] !== "")
+        $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '"';
+    $ffmpeg .= ' -pcr_period 20 \
+ -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
+
 
     if ($new["service_name"] !== "")
         $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '"';
@@ -119,8 +124,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
             $new = $row;
 
             $ffmpeg = 'ffmpeg -hide_banner -loglevel error \
- -thread_queue_size 8192 \
- -re \
+ -thread_queue_size 16384 \
  -fflags +genpts+discardcorrupt+nobuffer \
  -flags +low_delay \
  -i "udp://@' . $new["input_udp"] . '?fifo_size=50000000&buffer_size=50000000&overrun_nonfatal=1" \
@@ -128,21 +132,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
  -c:v ' . $new["video_format"] . ' \
  -threads 1 \
  -r 25 \
- -g 25 \
+ -g 50 \
  -bf 0 \
- -qmin 2 -qmax 31 \
+ -qmin 3 -qmax 35 \
  -me_method dia \
  -subq 0 \
  -b:v ' . $new["video_bitrate"] . 'k \
  -minrate ' . $new["video_bitrate"] . 'k \
  -maxrate ' . $new["video_bitrate"] . 'k \
  -bufsize ' . ((int)$new["video_bitrate"] * 2) . 'k \
- -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 \
- -af "volume=' . $new["volume"] . 'dB,aresample=async=1000"';
-            $ffmpeg .= ' -metadata service_provider=ShreeBhattJI ';
+ -c:a ' . $new["audio_format"] . ' \
+ -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 \
+ -af "volume=' . $new["volume"] . 'dB,aresample=async=1000" \
+ -metadata service_provider="ShreeBhattJI" ';
             if ($new["service_name"] !== "")
                 $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '"';
-            $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000"';
+            $ffmpeg .= ' -pcr_period 20 \
+ -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
+
 
             file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
 
