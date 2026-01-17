@@ -7,6 +7,22 @@ if (!file_exists($coreFile)) {
     file_put_contents($coreFile, json_encode([]));
 }
 
+function getNumaTopology(): array
+{
+    $out = shell_exec("numactl --hardware");
+    $nodes = [];
+
+    foreach (explode("\n", $out) as $line) {
+        if (preg_match('/node (\d+) cpus:\s+(.*)/', $line, $m)) {
+            $node = (int)$m[1];
+            $cpus = array_map('intval', preg_split('/\s+/', trim($m[2])));
+            $nodes[$node] = $cpus;
+        }
+    }
+
+    return $nodes;
+}
+
 /* Get total CPU cores */
 function getTotalCores(): int
 {
@@ -14,69 +30,66 @@ function getTotalCores(): int
 }
 
 /* Allocate next free core */
-function allocateCore(int $serviceId): int
+function allocateCore(int $serviceId): array
 {
     global $coreFile;
 
     $map = json_decode(file_get_contents($coreFile), true) ?: [];
-    $total = getTotalCores();
+    $usedCores = array_column($map, 'cpu');
 
-    if ($total < 2) {
-        $map[$serviceId] = 0;
-        file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
-        return 0;
-    }
+    $nodes = getNumaTopology();
+    $nodeIds = array_keys($nodes);
+    $nodeCount = count($nodeIds);
 
-    $half = intdiv($total, 2);
+    /* Alternate NUMA nodes */
+    $index = count($map);
+    $node = $nodeIds[$index % $nodeCount];
 
-    /*
-     Build desired order:
-     0, half, 1, half+1, 2, half+2, ...
-    */
-    $order = [];
-    for ($i = 0; $i < $half; $i++) {
-        $order[] = $i;
-        if (($i + $half) < $total) {
-            $order[] = $i + $half;
-        }
-    }
-
-    $used = array_values($map);
-
-    foreach ($order as $core) {
-        if (!in_array($core, $used, true)) {
-            $map[$serviceId] = $core;
+    foreach ($nodes[$node] as $cpu) {
+        if (!in_array($cpu, $usedCores, true)) {
+            $map[$serviceId] = [
+                "node" => $node,
+                "cpu"  => $cpu
+            ];
             file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
-            return $core;
+            return $map[$serviceId];
         }
     }
 
-    /* Fallback (should never hit unless fully occupied) */
-    $core = $order[count($map) % count($order)];
-    $map[$serviceId] = $core;
-    file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
-    return $core;
+    /* Fallback: any free CPU */
+    foreach ($nodes as $n => $cpus) {
+        foreach ($cpus as $cpu) {
+            if (!in_array($cpu, $usedCores, true)) {
+                $map[$serviceId] = ["node" => $n, "cpu" => $cpu];
+                file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
+                return $map[$serviceId];
+            }
+        }
+    }
+
+    /* Absolute fallback */
+    return ["node" => 0, "cpu" => 0];
 }
+
 
 /* Free core on delete */
 function freeCore(int $serviceId): void
 {
     global $coreFile;
+    $map = json_decode(file_get_contents($coreFile), true) ?: [];
 
-    $cores = json_decode(file_get_contents($coreFile), true);
-    if (isset($cores[$serviceId])) {
-        unset($cores[$serviceId]);
-        file_put_contents($coreFile, json_encode($cores, JSON_PRETTY_PRINT));
+    if (isset($map[$serviceId])) {
+        unset($map[$serviceId]);
+        file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
     }
 }
 
 /* Get assigned core */
-function getServiceCore(int $serviceId): ?int
+function getServiceCore(int $serviceId): ?array
 {
     global $coreFile;
-
-    $cores = json_decode(file_get_contents($coreFile), true);
-    return $cores[$serviceId] ?? null;
+    $map = json_decode(file_get_contents($coreFile), true) ?: [];
+    return $map[$serviceId] ?? null;
 }
 
 $jsonFile = __DIR__ . "/input.json";
@@ -111,9 +124,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
 
     $data[] = $new;
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
-    $core = allocateCore($new["id"]);
 
-    $ffmpeg = 'taskset -c ' . $core . ' ffmpeg -hide_banner -loglevel info \
+    $alloc = allocateCore($id);
+    $node  = $alloc["node"];
+    $core  = $alloc["cpu"];
+
+    $ffmpeg = 'numactl --cpunodebind=' . $node .
+        ' --membind=' . $node .
+        ' taskset -c ' . $core . ' ffmpeg -hide_banner -loglevel info \
  -thread_queue_size 65536 \
  -fflags +genpts+discardcorrupt+nobuffer \
  -readrate 1.0 \
@@ -330,7 +348,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
 
 <div class="containerindex">
     <div class="grid">
-        <div class="card wide">
+        <div class="card">
 
             <h2>Service List</h2>
             <button onclick="openAddPopup()">Add Service</button>
