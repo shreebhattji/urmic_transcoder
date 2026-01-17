@@ -33,15 +33,35 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
 
     $data[] = $new;
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
-    $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -re -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
-    $ffmpeg .= " -vf scale={$new["resolution"]} -g 12 -bf 2 -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
-    $ffmpeg .= ' -af volume=' . $new["volume"] . 'dB';
-    $ffmpeg .= ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2';
+
+    $ffmpeg = 'ffmpeg -hide_banner -loglevel error \
+ -thread_queue_size 8192 \
+ -re \
+ -fflags +genpts+discardcorrupt+nobuffer \
+ -flags +low_delay \
+ -i "udp://@' . $new["input_udp"] . '?fifo_size=50000000&buffer_size=50000000&overrun_nonfatal=1" \
+ -vf "scale=:' . $new["resolution"] . ',format=yuv420p" \
+ -c:v ' . $new["video_format"] . ' \
+ -threads 1 \
+ -r 25 \
+ -g 25 \
+ -bf 0 \
+ -qmin 2 -qmax 31 \
+ -me_method dia \
+ -subq 0 \
+ -b:v ' . $new["video_bitrate"] . 'k \
+ -minrate ' . $new["video_bitrate"] . 'k \
+ -maxrate ' . $new["video_bitrate"] . 'k \
+ -bufsize ' . ((int)$new["video_bitrate"] * 2) . 'k \
+ -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 \
+ -af "volume=' . $new["volume"] . 'dB,aresample=async=1000"';
+    $ffmpeg .= ' -metadata service_provider=ShreeBhattJI ';
 
     if ($new["service_name"] !== "")
         $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '"';
-    $ffmpeg .= ' -metadata service_provider=ShreeBhattJI ';
-    $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4&reuse=1&buffer_size=1048576"';
+    $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000"';
+
+
 
     file_put_contents("/var/www/encoder/{$new["id"]}.sh", $ffmpeg);
 
@@ -98,15 +118,31 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
 
             $new = $row;
 
-            $ffmpeg = 'ffmpeg -fflags +genpts+discardcorrupt -re -i "udp://@' . $new["input_udp"] . '?overrun_nonfatal=1&fifo_size=50000000" ';
-            $ffmpeg .= " -vf scale={$new["resolution"]} -g 12 -bf 2 -c:v mpeg2video -pix_fmt yuv420p -b:v {$new["video_bitrate"]}k -maxrate {$new["video_bitrate"]}k -minrate {$new["video_bitrate"]}k ";
-            $ffmpeg .= ' -af volume=' . $new["volume"] . 'dB';
-            $ffmpeg .= ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2';
-
+            $ffmpeg = 'ffmpeg -hide_banner -loglevel error \
+ -thread_queue_size 8192 \
+ -re \
+ -fflags +genpts+discardcorrupt+nobuffer \
+ -flags +low_delay \
+ -i "udp://@' . $new["input_udp"] . '?fifo_size=50000000&buffer_size=50000000&overrun_nonfatal=1" \
+ -vf "scale=:' . $new["resolution"] . ',format=yuv420p" \
+ -c:v ' . $new["video_format"] . ' \
+ -threads 1 \
+ -r 25 \
+ -g 25 \
+ -bf 0 \
+ -qmin 2 -qmax 31 \
+ -me_method dia \
+ -subq 0 \
+ -b:v ' . $new["video_bitrate"] . 'k \
+ -minrate ' . $new["video_bitrate"] . 'k \
+ -maxrate ' . $new["video_bitrate"] . 'k \
+ -bufsize ' . ((int)$new["video_bitrate"] * 2) . 'k \
+ -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 \
+ -af "volume=' . $new["volume"] . 'dB,aresample=async=1000"';
+            $ffmpeg .= ' -metadata service_provider=ShreeBhattJI ';
             if ($new["service_name"] !== "")
                 $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '"';
-            $ffmpeg .= ' -metadata service_provider=ShreeBhattJI ';
-            $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&ttl=4&reuse=1&buffer_size=1048576"';
+            $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000"';
 
             file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
 
@@ -266,9 +302,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
             </select>
 
             <select id="resolution">
-                <option value="720:576">720x576</option>
-                <option value="1280:720">1280x720</option>
-                <option value="1920:1080">1920x1080</option>
+                <option value="720:576" selected>720x576</option>
             </select>
 
             <input type="text" id="video_bitrate" placeholder="Video Bitrate">
@@ -348,11 +382,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
         service_name.value = "";
         in_udp.value = "";
         out_udp.value = "";
-        video_format.value = "h264";
-        audio_format.value = "aac";
-        resolution.value = "1920:1080";
-        video_bitrate.value = "";
-        audio_bitrate.value = "";
+        video_format.value = "mpeg2video";
+        audio_format.value = "mp2";
+        resolution.value = "720:576";
+        video_bitrate.value = "3000";
+        audio_bitrate.value = "96";
         volume.value = "0";
         service.value = "enable";
     }
