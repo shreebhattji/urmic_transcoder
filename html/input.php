@@ -1,58 +1,62 @@
 <?php include 'header.php'; ?>
 <?php
 
-/* ---------------- CPU CORE MANAGEMENT ---------------- */
-
 $coreFile = "/var/www/core.json";
+
 if (!file_exists($coreFile)) {
     file_put_contents($coreFile, json_encode([]));
 }
 
+/* Get total CPU cores */
 function getTotalCores(): int
 {
     return intval(trim(shell_exec("nproc")));
 }
 
+/* Allocate next free core */
 function allocateCore(int $serviceId): int
 {
     global $coreFile;
 
-    $map = json_decode(file_get_contents($coreFile), true) ?: [];
-    $used = array_values($map);
+    $cores = json_decode(file_get_contents($coreFile), true);
+    $used = array_values($cores);
     $total = getTotalCores();
 
     for ($i = 0; $i < $total; $i++) {
         if (!in_array($i, $used, true)) {
-            $map[$serviceId] = $i;
-            file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
+            $cores[$serviceId] = $i;
+            file_put_contents($coreFile, json_encode($cores, JSON_PRETTY_PRINT));
             return $i;
         }
     }
 
+    /* fallback: round-robin */
     $core = $serviceId % $total;
-    $map[$serviceId] = $core;
-    file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
+    $cores[$serviceId] = $core;
+    file_put_contents($coreFile, json_encode($cores, JSON_PRETTY_PRINT));
     return $core;
 }
 
-function getServiceCore(int $serviceId): ?int
-{
-    global $coreFile;
-    $map = json_decode(file_get_contents($coreFile), true) ?: [];
-    return $map[$serviceId] ?? null;
-}
-
+/* Free core on delete */
 function freeCore(int $serviceId): void
 {
     global $coreFile;
-    $map = json_decode(file_get_contents($coreFile), true) ?: [];
-    if (isset($map[$serviceId])) {
-        unset($map[$serviceId]);
-        file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
+
+    $cores = json_decode(file_get_contents($coreFile), true);
+    if (isset($cores[$serviceId])) {
+        unset($cores[$serviceId]);
+        file_put_contents($coreFile, json_encode($cores, JSON_PRETTY_PRINT));
     }
 }
 
-/* ---------------- DATA LOAD ---------------- */
+/* Get assigned core */
+function getServiceCore(int $serviceId): ?int
+{
+    global $coreFile;
+
+    $cores = json_decode(file_get_contents($coreFile), true);
+    return $cores[$serviceId] ?? null;
+}
 
 $jsonFile = __DIR__ . "/input.json";
 if (!file_exists($jsonFile)) {
@@ -60,22 +64,18 @@ if (!file_exists($jsonFile)) {
 }
 $data = json_decode(file_get_contents($jsonFile), true);
 
-/* Fix legacy entries */
+/* Fix old entries missing service_name or volume */
 foreach ($data as $k => $d) {
     if (!isset($d["service_name"])) $data[$k]["service_name"] = "";
     if (!isset($d["volume"])) $data[$k]["volume"] = "0";
 }
 file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
-/* ---------------- ADD ---------------- */
-
+/* ---------------- ADD NEW ---------------- */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
 
-    $id = time();
-    $core = allocateCore($id);
-
     $new = [
-        "id" => $id,
+        "id" => time(),
         "service_name" => $_POST["service_name"],
         "input_udp" => $_POST["input_udp"],
         "output_udp" => $_POST["output_udp"],
@@ -90,6 +90,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
 
     $data[] = $new;
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
+    $core = allocateCore($new["id"]);
 
     $ffmpeg = 'taskset -c ' . $core . ' ffmpeg -hide_banner -loglevel error \
  -thread_queue_size 16384 \
@@ -99,9 +100,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
  -vf "scale=' . $new["resolution"] . ',format=yuv420p" \
  -c:v ' . $new["video_format"] . ' \
  -threads 1 \
- -r 25 -g 50 -bf 0 \
+ -r 25 \
+ -g 50 \
+ -bf 0 \
  -qmin 3 -qmax 35 \
- -me_method dia -subq 0 \
+ -me_method dia \
+ -subq 0 \
  -b:v ' . $new["video_bitrate"] . 'k \
  -minrate ' . $new["video_bitrate"] . 'k \
  -maxrate ' . $new["video_bitrate"] . 'k \
@@ -110,36 +114,41 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
  -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 \
  -af "volume=' . $new["volume"] . 'dB,aresample=async=1000" \
  -metadata service_provider="ShreeBhattJI" ';
+    if ($new["service_name"] !== "")
+        $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '"';
+    $ffmpeg .= ' -pcr_period 20 \
+ -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
+
 
     if ($new["service_name"] !== "")
-        $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
+        $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '"';
+    $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000"';
 
-    $ffmpeg .= '-pcr_period 20 \
- -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&flush_packets=1"';
 
-    file_put_contents("/var/www/encoder/{$id}.sh", $ffmpeg);
+
+    file_put_contents("/var/www/encoder/{$new["id"]}.sh", $ffmpeg);
 
     if ($new["service"] === "enable") {
-        exec("sudo systemctl enable encoder@$id");
-        exec("sudo systemctl restart encoder@$id");
+        exec("sudo systemctl enable encoder@{$new["id"]}");
+        exec("sudo systemctl restart encoder@{$new["id"]}");
     }
-
     echo "OK";
     exit;
 }
 
 /* ---------------- DELETE ---------------- */
-
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
 
     $id = intval($_POST["id"]);
-    $data = array_values(array_filter($data, fn($r) => $r["id"] != $id));
-    file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
+    $newData = [];
 
+    foreach ($data as $row) {
+        if ($row["id"] != $id) $newData[] = $row;
+    }
+
+    file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
     exec("sudo systemctl stop encoder@$id");
     exec("sudo systemctl disable encoder@$id");
-
-    freeCore($id);
 
     if (file_exists("/var/www/encoder/$id.sh")) unlink("/var/www/encoder/$id.sh");
 
@@ -148,13 +157,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
 }
 
 /* ---------------- EDIT ---------------- */
-
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
 
     $id = intval($_POST["id"]);
-    $core = getServiceCore($id) ?? allocateCore($id);
+    $newData = [];
 
-    foreach ($data as &$row) {
+    foreach ($data as $row) {
         if ($row["id"] == $id) {
 
             $row = [
@@ -171,10 +179,43 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
                 "service" => $_POST["service"]
             ];
 
-            $ffmpeg = 'taskset -c ' . $core . ' ffmpeg -hide_banner -loglevel error ...';
+            $new = $row;
+            $core = getServiceCore($id);
+            if ($core === null) {
+                $core = allocateCore($id);
+            }
+
+            $ffmpeg = 'taskset -c ' . $core . ' ffmpeg -hide_banner -loglevel error \
+ -thread_queue_size 16384 \
+ -fflags +genpts+discardcorrupt+nobuffer \
+ -flags +low_delay \
+ -i "udp://@' . $new["input_udp"] . '?fifo_size=50000000&buffer_size=50000000&overrun_nonfatal=1" \
+ -vf "scale=' . $new["resolution"] . ',format=yuv420p" \
+ -c:v ' . $new["video_format"] . ' \
+ -threads 1 \
+ -r 25 \
+ -g 50 \
+ -bf 0 \
+ -qmin 3 -qmax 35 \
+ -me_method dia \
+ -subq 0 \
+ -b:v ' . $new["video_bitrate"] . 'k \
+ -minrate ' . $new["video_bitrate"] . 'k \
+ -maxrate ' . $new["video_bitrate"] . 'k \
+ -bufsize ' . ((int)$new["video_bitrate"] * 2) . 'k \
+ -c:a ' . $new["audio_format"] . ' \
+ -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 \
+ -af "volume=' . $new["volume"] . 'dB,aresample=async=1000" \
+ -metadata service_provider="ShreeBhattJI" ';
+            if ($new["service_name"] !== "")
+                $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '"';
+            $ffmpeg .= ' -pcr_period 20 \
+ -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
+
+
             file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
 
-            if ($row["service"] === "enable") {
+            if ($new["service"] === "enable") {
                 exec("sudo systemctl enable encoder@$id");
                 exec("sudo systemctl restart encoder@$id");
             } else {
@@ -182,21 +223,326 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
                 exec("sudo systemctl disable encoder@$id");
             }
         }
+
+        $newData[] = $row;
     }
 
-    file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
+    file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
     echo "OK";
     exit;
 }
 
 /* ---------------- RESTART ---------------- */
-
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
-    exec("sudo systemctl restart encoder@" . intval($_POST["id"]));
+    $id = intval($_POST["id"]);
+    exec("sudo systemctl restart encoder@$id");
     echo "OK";
     exit;
 }
 
 ?>
+<style>
+    body {
+        font-family: Arial;
+        padding: 20px;
+    }
+
+    button {
+        padding: 6px 12px;
+        cursor: pointer;
+    }
+
+    .restart-btn {
+        background: #ffaa00;
+    }
+
+    .delete-btn {
+        background: #b40000;
+        color: white;
+    }
+
+    .edit-btn {
+        background: #0066cc;
+        color: white;
+    }
+
+    #popup {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #fff;
+        padding: 20px;
+        border: 1px solid #333;
+        width: 350px;
+    }
+
+    #overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+
+    th,
+    td {
+        border: 1px solid #ccc;
+        padding: 10px;
+    }
+
+    input,
+    select {
+        width: 100%;
+        padding: 6px;
+        margin-bottom: 10px;
+    }
+</style>
+
+<div class="containerindex">
+    <div class="grid">
+
+        <h2>Service List</h2>
+        <button onclick="openAddPopup()">Add Service</button>
+
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Service Name</th>
+                <th>Input</th>
+                <th>Output</th>
+                <th>Video</th>
+                <th>Audio</th>
+                <th>Resolution</th>
+                <th>V-Bitrate</th>
+                <th>A-Bitrate</th>
+                <th>Volume (dB)</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+
+            <?php foreach ($data as $row): ?>
+                <tr>
+                    <td><?= $row["id"] ?></td>
+                    <td><?= $row["service_name"] ?></td>
+                    <td><?= $row["input_udp"] ?></td>
+                    <td><?= $row["output_udp"] ?></td>
+                    <td><?= $row["video_format"] ?></td>
+                    <td><?= $row["audio_format"] ?></td>
+                    <td><?= $row["resolution"] ?></td>
+                    <td><?= $row["video_bitrate"] ?></td>
+                    <td><?= $row["audio_bitrate"] ?></td>
+                    <td><?= $row["volume"] ?> dB</td>
+                    <td><?= $row["service"] ?></td>
+
+                    <td>
+                        <button class="edit-btn" onclick='openEditPopup(<?= json_encode($row) ?>)'>Edit</button>
+                        <button class="restart-btn" onclick="restartService(<?= $row['id'] ?>)">Restart</button>
+                        <button class="delete-btn" onclick="deleteService(<?= $row['id'] ?>)">Delete</button>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+
+        <!-- POPUP -->
+        <div id="overlay"></div>
+        <div id="popup">
+            <h3 id="popup_title">Add Service</h3>
+
+            <input type="hidden" id="service_id">
+
+            <input type="text" id="service_name" placeholder="Service Name">
+
+            <input type="text" id="in_udp" placeholder="Input UDP">
+            <input type="text" id="out_udp" placeholder="Output UDP">
+
+            <select id="video_format">
+                <option value="mpeg2video" selected>MPEG2</option>
+            </select>
+
+            <select id="audio_format">
+                <option value="mp2" selected>MP2</option>
+            </select>
+
+            <select id="resolution">
+                <option value="720:576" selected>720x576</option>
+            </select>
+
+            <input type="text" id="video_bitrate" placeholder="Video Bitrate">
+
+            <input type="text" id="audio_bitrate" placeholder="Audio Bitrate">
+
+            <select id="volume">
+                <option value="-4">-4 dB</option>
+                <option value="-3">-3 dB</option>
+                <option value="-2">-2 dB</option>
+                <option value="-1">-1 dB</option>
+                <option value="0">0 dB</option>
+                <option value="1">1 dB</option>
+                <option value="2">2 dB</option>
+                <option value="3">3 dB</option>
+                <option value="4">4 dB</option>
+                <option value="5">5 dB</option>
+                <option value="10">10 dB</option>
+                <option value="12">12 dB</option>
+                <option value="15">15 dB</option>
+            </select>
+
+            <select id="service">
+                <option value="enable">Enable</option>
+                <option value="disable">Disable</option>
+            </select>
+
+            <button id="saveBtn" onclick="saveService()">Save</button>
+            <button onclick="closePopup()">Close</button>
+            <br>
+
+        </div>
+        <br>
+    </div>
+    <br>
+</div>
+
+<script>
+    function openAddPopup() {
+        document.getElementById("popup_title").innerText = "Add Service";
+        document.getElementById("saveBtn").setAttribute("onclick", "saveService()");
+        clearFields();
+        showPopup();
+    }
+
+    function openEditPopup(row) {
+        document.getElementById("popup_title").innerText = "Edit Service";
+
+        service_id.value = row.id;
+        service_name.value = row.service_name;
+        in_udp.value = row.input_udp;
+        out_udp.value = row.output_udp;
+        video_format.value = row.video_format;
+        audio_format.value = row.audio_format;
+        resolution.value = row.resolution;
+        video_bitrate.value = row.video_bitrate;
+        audio_bitrate.value = row.audio_bitrate;
+        volume.value = row.volume;
+        service.value = row.service;
+
+        document.getElementById("saveBtn").setAttribute("onclick", "updateService()");
+        showPopup();
+    }
+
+    function showPopup() {
+        overlay.style.display = "block";
+        popup.style.display = "block";
+    }
+
+    function closePopup() {
+        overlay.style.display = "none";
+        popup.style.display = "none";
+    }
+
+    function clearFields() {
+        service_id.value = "";
+        service_name.value = "";
+        in_udp.value = "";
+        out_udp.value = "";
+        video_format.value = "mpeg2video";
+        audio_format.value = "mp2";
+        resolution.value = "720:576";
+        video_bitrate.value = "3000";
+        audio_bitrate.value = "96";
+        volume.value = "0";
+        service.value = "enable";
+    }
+
+    function saveService() {
+        let form = new FormData();
+        form.append("action", "add");
+        form.append("service_name", service_name.value);
+        form.append("input_udp", in_udp.value);
+        form.append("output_udp", out_udp.value);
+        form.append("video_format", video_format.value);
+        form.append("audio_format", audio_format.value);
+        form.append("resolution", resolution.value);
+        form.append("video_bitrate", video_bitrate.value);
+        form.append("audio_bitrate", audio_bitrate.value);
+        form.append("volume", volume.value);
+        form.append("service", service.value);
+
+        fetch("input.php", {
+                method: "POST",
+                body: form
+            })
+            .then(r => r.text())
+            .then(res => {
+                if (res.includes("OK")) location.reload();
+            });
+    }
+
+    function updateService() {
+        let form = new FormData();
+        form.append("action", "edit");
+        form.append("id", service_id.value);
+
+        form.append("service_name", service_name.value);
+        form.append("input_udp", in_udp.value);
+        form.append("output_udp", out_udp.value);
+        form.append("video_format", video_format.value);
+        form.append("audio_format", audio_format.value);
+        form.append("resolution", resolution.value);
+        form.append("video_bitrate", video_bitrate.value);
+        form.append("audio_bitrate", audio_bitrate.value);
+        form.append("volume", volume.value);
+        form.append("service", service.value);
+
+        fetch("input.php", {
+                method: "POST",
+                body: form
+            })
+            .then(r => r.text())
+            .then(res => {
+                if (res.includes("OK")) location.reload();
+            });
+    }
+
+    function deleteService(id) {
+        if (!confirm("Delete service?")) return;
+
+        let form = new FormData();
+        form.append("action", "delete");
+        form.append("id", id);
+
+        fetch("input.php", {
+                method: "POST",
+                body: form
+            })
+            .then(r => r.text())
+            .then(res => {
+                if (res.includes("OK")) location.reload();
+            });
+    }
+
+    function restartService(id) {
+        if (!confirm("Restart?")) return;
+
+        let form = new FormData();
+        form.append("action", "restart");
+        form.append("id", id);
+
+        fetch("input.php", {
+                method: "POST",
+                body: form
+            })
+            .then(r => r.text())
+            .then(res => {
+                if (res.includes("OK")) alert("Service restarted");
+            });
+    }
+</script>
 
 <?php include 'footer.php'; ?>
