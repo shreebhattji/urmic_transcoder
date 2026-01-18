@@ -17,7 +17,6 @@ function getNumaTopology(): array
         if (preg_match('/node (\d+) cpus:\s+(.*)/', $line, $m)) {
             $node = (int)$m[1];
             $cpus = array_map('intval', preg_split('/\s+/', trim($m[2])));
-
             sort($cpus);
             $nodes[$node] = $cpus;
         }
@@ -27,7 +26,7 @@ function getNumaTopology(): array
     return $nodes;
 }
 
-/* Allocate core with EVEN-first, ODD-later round robin */
+/* Allocate core with EVEN-first, ODD-later, safe round robin */
 function allocateCore(int $serviceId): array
 {
     global $coreFile;
@@ -35,10 +34,7 @@ function allocateCore(int $serviceId): array
     $map   = json_decode(file_get_contents($coreFile), true) ?: [];
     $nodes = getNumaTopology();
 
-    $nodeIds   = array_keys($nodes);
-    $nodeCount = count($nodeIds);
-
-    if ($nodeCount === 0) {
+    if (empty($nodes)) {
         return ["node" => 0, "cpu" => 0];
     }
 
@@ -51,13 +47,13 @@ function allocateCore(int $serviceId): array
 
     $index = count($map);
 
-    /* Count total EVEN cores across all nodes */
+    /* Count total EVEN cores */
     $totalEven = 0;
     foreach ($even as $cpus) {
         $totalEven += count($cpus);
     }
 
-    /* Decide phase: EVEN cores first, then ODD */
+    /* Select phase */
     if ($index < $totalEven) {
         $phaseCpus = $even;
         $phaseIndex = $index;
@@ -66,22 +62,35 @@ function allocateCore(int $serviceId): array
         $phaseIndex = $index - $totalEven;
     }
 
+    /* Build list of nodes that actually have CPUs in this phase */
+    $activeNodes = [];
+    foreach ($phaseCpus as $n => $cpus) {
+        if (!empty($cpus)) {
+            $activeNodes[$n] = $cpus;
+        }
+    }
+
+    if (empty($activeNodes)) {
+        // Absolute fallback (should never happen)
+        return ["node" => 0, "cpu" => 0];
+    }
+
+    $nodeIds   = array_keys($activeNodes);
+    $nodeCount = count($nodeIds);
+
     /*
-     * Round robin math
-     * nodeIndex = phaseIndex % nodeCount
-     * coreIndex = floor(phaseIndex / nodeCount)
+     * Correct round-robin math
+     * First exhaust core index across all nodes,
+     * then move to next core.
      */
     $nodeIndex = $phaseIndex % $nodeCount;
     $coreIndex = intdiv($phaseIndex, $nodeCount);
 
     $node = $nodeIds[$nodeIndex];
+    $cpuList = $activeNodes[$node];
 
-    if (!isset($phaseCpus[$node][$coreIndex])) {
-        /* Wrap safely if uneven core counts */
-        $coreIndex = $coreIndex % count($phaseCpus[$node]);
-    }
-
-    $cpu = $phaseCpus[$node][$coreIndex];
+    // Safe wrap (never divide by zero now)
+    $cpu = $cpuList[$coreIndex % count($cpuList)];
 
     $map[$serviceId] = [
         "node" => $node,
