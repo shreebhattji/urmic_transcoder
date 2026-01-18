@@ -7,6 +7,7 @@ if (!file_exists($coreFile)) {
     file_put_contents($coreFile, json_encode([]));
 }
 
+/* Get NUMA topology with PHYSICAL cores only */
 function getNumaTopology(): array
 {
     $out = shell_exec("numactl --hardware");
@@ -17,47 +18,53 @@ function getNumaTopology(): array
             $node = (int)$m[1];
             $cpus = array_map('intval', preg_split('/\s+/', trim($m[2])));
 
-            /* use EVEN CPUs only: 0,2,4,... */
-            $nodes[$node] = array_values(
-                array_filter($cpus, fn($c) => $c % 2 === 0)
-            );
+            // keep even CPUs only (physical cores)
+            $cpus = array_values(array_filter($cpus, fn($c) => $c % 2 === 0));
+
+            $nodes[$node] = $cpus;
         }
     }
 
-    ksort($nodes); // ensure deterministic order
+    ksort($nodes);
     return $nodes;
 }
 
-/* Allocate core in strict round-robin */
+/* Allocate core: core-index first, node second */
 function allocateCore(int $serviceId): array
 {
     global $coreFile;
 
-    $map = json_decode(file_get_contents($coreFile), true) ?: [];
+    $map   = json_decode(file_get_contents($coreFile), true) ?: [];
     $nodes = getNumaTopology();
 
     $nodeIds   = array_keys($nodes);
-    $nodeCount = count($nodeIds);   // ✅ calculated BEFORE processing
+    $nodeCount = count($nodeIds);
 
     if ($nodeCount === 0) {
         return ["node" => 0, "cpu" => 0];
     }
 
+    // total services already allocated
     $index = count($map);
 
-    /* Round-robin node selection */
-    $nodePos = $index % $nodeCount;
-    $node    = $nodeIds[$nodePos];
+    /*
+     * ROUND-ROBIN MATH (IMPORTANT)
+     *
+     * coreIndex = floor(index / nodeCount)
+     * nodeIndex = index % nodeCount
+     */
+    $coreIndex = intdiv($index, $nodeCount);
+    $nodeIndex = $index % $nodeCount;
 
-    /* Per-node CPU index */
-    $cpuIndex = intdiv($index, $nodeCount);
+    $node = $nodeIds[$nodeIndex];
 
-    /* Wrap safely if CPUs exhausted */
-    if (!isset($nodes[$node][$cpuIndex])) {
-        $cpuIndex = $cpuIndex % count($nodes[$node]);
+    // wrap core index safely if cores exhausted
+    $coreCount = count($nodes[$node]);
+    if ($coreCount === 0) {
+        return ["node" => $node, "cpu" => 0];
     }
 
-    $cpu = $nodes[$node][$cpuIndex];
+    $cpu = $nodes[$node][$coreIndex % $coreCount];
 
     $map[$serviceId] = [
         "node" => $node,
@@ -88,43 +95,6 @@ function getServiceCore(int $serviceId): ?array
     return $map[$serviceId] ?? null;
 }
 
-$jsonFile = __DIR__ . "/input.json";
-if (!file_exists($jsonFile)) {
-    file_put_contents($jsonFile, json_encode([]));
-}
-$data = json_decode(file_get_contents($jsonFile), true);
-
-/* Fix old entries missing service_name or volume */
-foreach ($data as $k => $d) {
-    if (!isset($d["service_name"])) $data[$k]["service_name"] = "";
-    if (!isset($d["volume"])) $data[$k]["volume"] = "0";
-}
-file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
-
-/* ---------------- ADD NEW ---------------- */
-if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
-
-    $new = [
-        "id" => time(),
-        "service_name" => $_POST["service_name"],
-        "input_udp" => $_POST["input_udp"],
-        "output_udp" => $_POST["output_udp"],
-        "video_format" => $_POST["video_format"],
-        "audio_format" => $_POST["audio_format"],
-        "resolution" => $_POST["resolution"],
-        "video_bitrate" => $_POST["video_bitrate"],
-        "audio_bitrate" => $_POST["audio_bitrate"],
-        "volume" => $_POST["volume"],
-        "service" => $_POST["service"]
-    ];
-
-    $data[] = $new;
-    file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
-
-    $alloc = getServiceCore($id);
-    if ($alloc === null) {
-        $alloc = allocateCore($id);
-    }
 
     $core = (int)$alloc["cpu"];
     $node = (int)$alloc["node"];
