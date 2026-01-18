@@ -1,13 +1,15 @@
 <?php include 'header.php'; ?>
 <?php
 
+<?php
+
 $coreFile = "/var/www/core.json";
 
 if (!file_exists($coreFile)) {
     file_put_contents($coreFile, json_encode([]));
 }
 
-/* Get NUMA topology with PHYSICAL cores only */
+/* Read NUMA topology */
 function getNumaTopology(): array
 {
     $out = shell_exec("numactl --hardware");
@@ -18,9 +20,7 @@ function getNumaTopology(): array
             $node = (int)$m[1];
             $cpus = array_map('intval', preg_split('/\s+/', trim($m[2])));
 
-            // keep even CPUs only (physical cores)
-            $cpus = array_values(array_filter($cpus, fn($c) => $c % 2 === 0));
-
+            sort($cpus);
             $nodes[$node] = $cpus;
         }
     }
@@ -29,7 +29,7 @@ function getNumaTopology(): array
     return $nodes;
 }
 
-/* Allocate core: core-index first, node second */
+/* Allocate core with EVEN-first, ODD-later round robin */
 function allocateCore(int $serviceId): array
 {
     global $coreFile;
@@ -44,27 +44,46 @@ function allocateCore(int $serviceId): array
         return ["node" => 0, "cpu" => 0];
     }
 
-    // total services already allocated
+    /* Split CPUs per node */
+    $even = $odd = [];
+    foreach ($nodes as $n => $cpus) {
+        $even[$n] = array_values(array_filter($cpus, fn($c) => $c % 2 === 0));
+        $odd[$n]  = array_values(array_filter($cpus, fn($c) => $c % 2 === 1));
+    }
+
     $index = count($map);
 
+    /* Count total EVEN cores across all nodes */
+    $totalEven = 0;
+    foreach ($even as $cpus) {
+        $totalEven += count($cpus);
+    }
+
+    /* Decide phase: EVEN cores first, then ODD */
+    if ($index < $totalEven) {
+        $phaseCpus = $even;
+        $phaseIndex = $index;
+    } else {
+        $phaseCpus = $odd;
+        $phaseIndex = $index - $totalEven;
+    }
+
     /*
-     * ROUND-ROBIN MATH (IMPORTANT)
-     *
-     * coreIndex = floor(index / nodeCount)
-     * nodeIndex = index % nodeCount
+     * Round robin math
+     * nodeIndex = phaseIndex % nodeCount
+     * coreIndex = floor(phaseIndex / nodeCount)
      */
-    $coreIndex = intdiv($index, $nodeCount);
-    $nodeIndex = $index % $nodeCount;
+    $nodeIndex = $phaseIndex % $nodeCount;
+    $coreIndex = intdiv($phaseIndex, $nodeCount);
 
     $node = $nodeIds[$nodeIndex];
 
-    // wrap core index safely if cores exhausted
-    $coreCount = count($nodes[$node]);
-    if ($coreCount === 0) {
-        return ["node" => $node, "cpu" => 0];
+    if (!isset($phaseCpus[$node][$coreIndex])) {
+        /* Wrap safely if uneven core counts */
+        $coreIndex = $coreIndex % count($phaseCpus[$node]);
     }
 
-    $cpu = $nodes[$node][$coreIndex % $coreCount];
+    $cpu = $phaseCpus[$node][$coreIndex];
 
     $map[$serviceId] = [
         "node" => $node,
@@ -95,6 +114,43 @@ function getServiceCore(int $serviceId): ?array
     return $map[$serviceId] ?? null;
 }
 
+$jsonFile = __DIR__ . "/input.json";
+if (!file_exists($jsonFile)) {
+    file_put_contents($jsonFile, json_encode([]));
+}
+$data = json_decode(file_get_contents($jsonFile), true);
+
+/* Fix old entries missing service_name or volume */
+foreach ($data as $k => $d) {
+    if (!isset($d["service_name"])) $data[$k]["service_name"] = "";
+    if (!isset($d["volume"])) $data[$k]["volume"] = "0";
+}
+file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
+
+/* ---------------- ADD NEW ---------------- */
+if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
+
+    $new = [
+        "id" => time(),
+        "service_name" => $_POST["service_name"],
+        "input_udp" => $_POST["input_udp"],
+        "output_udp" => $_POST["output_udp"],
+        "video_format" => $_POST["video_format"],
+        "audio_format" => $_POST["audio_format"],
+        "resolution" => $_POST["resolution"],
+        "video_bitrate" => $_POST["video_bitrate"],
+        "audio_bitrate" => $_POST["audio_bitrate"],
+        "volume" => $_POST["volume"],
+        "service" => $_POST["service"]
+    ];
+
+    $data[] = $new;
+    file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
+
+    $alloc = getServiceCore($id);
+    if ($alloc === null) {
+        $alloc = allocateCore($id);
+    }
 
     $core = (int)$alloc["cpu"];
     $node = (int)$alloc["node"];
