@@ -303,11 +303,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
             $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
 
 
-            if ($new["service_name"] !== "")
-                $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '"';
-            $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000"';
-
-
             file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
 
             if ($new["service"] === "enable") {
