@@ -16,63 +16,59 @@ function getNumaTopology(): array
         if (preg_match('/node (\d+) cpus:\s+(.*)/', $line, $m)) {
             $node = (int)$m[1];
             $cpus = array_map('intval', preg_split('/\s+/', trim($m[2])));
-            $nodes[$node] = $cpus;
+
+            /* use EVEN CPUs only: 0,2,4,... */
+            $nodes[$node] = array_values(
+                array_filter($cpus, fn($c) => $c % 2 === 0)
+            );
         }
     }
 
+    ksort($nodes); // ensure deterministic order
     return $nodes;
 }
 
-/* Get total CPU cores */
-function getTotalCores(): int
-{
-    return intval(trim(shell_exec("nproc")));
-}
-
-/* Allocate next free core */
+/* Allocate core in strict round-robin */
 function allocateCore(int $serviceId): array
 {
     global $coreFile;
 
     $map = json_decode(file_get_contents($coreFile), true) ?: [];
-    $usedCores = array_column($map, 'cpu');
-
     $nodes = getNumaTopology();
-    $nodeIds = array_keys($nodes);
-    $nodeCount = count($nodeIds);
 
-    /* Alternate NUMA nodes */
+    $nodeIds   = array_keys($nodes);
+    $nodeCount = count($nodeIds);   // ✅ calculated BEFORE processing
+
+    if ($nodeCount === 0) {
+        return ["node" => 0, "cpu" => 0];
+    }
+
     $index = count($map);
-    $node = $nodeIds[$index % $nodeCount];
 
-    foreach ($nodes[$node] as $cpu) {
-        if (!in_array($cpu, $usedCores, true)) {
-            $map[$serviceId] = [
-                "node" => $node,
-                "cpu"  => $cpu
-            ];
-            file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
-            return $map[$serviceId];
-        }
+    /* Round-robin node selection */
+    $nodePos = $index % $nodeCount;
+    $node    = $nodeIds[$nodePos];
+
+    /* Per-node CPU index */
+    $cpuIndex = intdiv($index, $nodeCount);
+
+    /* Wrap safely if CPUs exhausted */
+    if (!isset($nodes[$node][$cpuIndex])) {
+        $cpuIndex = $cpuIndex % count($nodes[$node]);
     }
 
-    /* Fallback: any free CPU */
-    foreach ($nodes as $n => $cpus) {
-        foreach ($cpus as $cpu) {
-            if (!in_array($cpu, $usedCores, true)) {
-                $map[$serviceId] = ["node" => $n, "cpu" => $cpu];
-                file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
-                return $map[$serviceId];
-            }
-        }
-    }
+    $cpu = $nodes[$node][$cpuIndex];
 
-    /* Absolute fallback */
-    return ["node" => 0, "cpu" => 0];
+    $map[$serviceId] = [
+        "node" => $node,
+        "cpu"  => $cpu
+    ];
+
+    file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
+    return $map[$serviceId];
 }
 
-
-/* Free core on delete */
+/* Free core */
 function freeCore(int $serviceId): void
 {
     global $coreFile;
