@@ -3,74 +3,113 @@
 
 $coreFile = "/var/www/core.json";
 
-if (!file_exists($coreFile)) {
-    file_put_contents($coreFile, json_encode([]));
+/* ---------------------------------------------------------
+   STATE HELPERS
+--------------------------------------------------------- */
+
+function loadCoreState(): array
+{
+    global $coreFile;
+
+    if (!file_exists($coreFile)) {
+        return ["cursor" => 0, "allocations" => []];
+    }
+
+    $state = json_decode(file_get_contents($coreFile), true);
+    return $state ?: ["cursor" => 0, "allocations" => []];
 }
 
-/* ---------- STEP 1: READ & COUNT NUMA TOPOLOGY ---------- */
+function saveCoreState(array $state): void
+{
+    global $coreFile;
+    file_put_contents($coreFile, json_encode($state, JSON_PRETTY_PRINT));
+}
+
+/* ---------------------------------------------------------
+   NUMA + SMT TOPOLOGY (SOURCE OF TRUTH)
+--------------------------------------------------------- */
+
 function getNumaTopology(): array
 {
-    $out = shell_exec("numactl --hardware");
     $nodes = [];
 
-    foreach (explode("\n", $out) as $line) {
-        if (preg_match('/node (\d+) cpus:\s+(.*)/', $line, $m)) {
-            $node = (int)$m[1];
-            $cpus = array_map('intval', preg_split('/\s+/', trim($m[2])));
-            sort($cpus);
+    /* discover nodes */
+    foreach (glob('/sys/devices/system/node/node*') as $nodePath) {
+        $node = (int)str_replace('node', '', basename($nodePath));
+        $nodes[$node] = [];
+    }
 
-            $nodes[$node] = [
-                "all"  => $cpus,
-                "even" => array_values(array_filter($cpus, fn($c) => $c % 2 === 0)),
-                "odd"  => array_values(array_filter($cpus, fn($c) => $c % 2 === 1)),
-            ];
+    /* read cpu → node + core_id */
+    foreach (glob('/sys/devices/system/cpu/cpu[0-9]*') as $cpuPath) {
+        $cpu = (int)str_replace('cpu', '', basename($cpuPath));
+        $topo = "$cpuPath/topology";
+
+        if (!is_dir($topo)) {
+            continue;
+        }
+
+        $coreId = (int)trim(file_get_contents("$topo/core_id"));
+
+        $node = null;
+        foreach (glob("$cpuPath/node*") as $n) {
+            $node = (int)str_replace('node', '', basename($n));
+            break;
+        }
+
+        if ($node === null) {
+            continue;
+        }
+
+        $nodes[$node][$coreId][] = $cpu;
+    }
+
+    /* normalize ordering */
+    ksort($nodes);
+    foreach ($nodes as &$cores) {
+        ksort($cores);
+        foreach ($cores as &$threads) {
+            sort($threads); // primary thread first
         }
     }
 
-    ksort($nodes);
     return $nodes;
 }
 
-/* ---------- STEP 2: BUILD GLOBAL ROUND-ROBIN PLAN ---------- */
+/* ---------------------------------------------------------
+   BUILD GLOBAL ROUND-ROBIN PLAN
+--------------------------------------------------------- */
+
 function buildAllocationPlan(array $nodes): array
 {
     $plan = [];
-    $nodeIds = array_keys($nodes);
-    $nodeCount = count($nodeIds);
 
-    if ($nodeCount === 0) {
+    if (empty($nodes)) {
         return $plan;
     }
 
-    /* EVEN cores first (physical cores) */
-    $maxEven = 0;
-    foreach ($nodes as $n) {
-        $maxEven = max($maxEven, count($n["even"]));
-    }
+    $maxCores = max(array_map('count', $nodes));
 
-    for ($coreIndex = 0; $coreIndex < $maxEven; $coreIndex++) {
-        foreach ($nodeIds as $node) {
-            if (isset($nodes[$node]["even"][$coreIndex])) {
+    /* PASS 1 — physical cores only */
+    for ($i = 0; $i < $maxCores; $i++) {
+        foreach ($nodes as $node => $cores) {
+            $coreIds = array_keys($cores);
+            if (isset($coreIds[$i])) {
                 $plan[] = [
                     "node" => $node,
-                    "cpu"  => $nodes[$node]["even"][$coreIndex]
+                    "cpu"  => $cores[$coreIds[$i]][0]
                 ];
             }
         }
     }
 
-    /* ODD cores next (hyper-threads) */
-    $maxOdd = 0;
-    foreach ($nodes as $n) {
-        $maxOdd = max($maxOdd, count($n["odd"]));
-    }
-
-    for ($coreIndex = 0; $coreIndex < $maxOdd; $coreIndex++) {
-        foreach ($nodeIds as $node) {
-            if (isset($nodes[$node]["odd"][$coreIndex])) {
+    /* PASS 2 — SMT siblings */
+    for ($i = 0; $i < $maxCores; $i++) {
+        foreach ($nodes as $node => $cores) {
+            $coreIds = array_keys($cores);
+            if (isset($coreIds[$i]) && count($cores[$coreIds[$i]]) > 1) {
                 $plan[] = [
                     "node" => $node,
-                    "cpu"  => $nodes[$node]["odd"][$coreIndex]
+                    "cpu"  => $cores[$coreIds[$i]][1]
                 ];
             }
         }
@@ -79,12 +118,18 @@ function buildAllocationPlan(array $nodes): array
     return $plan;
 }
 
-/* ---------- STEP 3: ALLOCATE USING PRECOMPUTED PLAN ---------- */
+/* ---------------------------------------------------------
+   ALLOCATION API
+--------------------------------------------------------- */
+
 function allocateCore(int $serviceId): array
 {
-    global $coreFile;
+    $state = loadCoreState();
 
-    $map   = json_decode(file_get_contents($coreFile), true) ?: [];
+    if (isset($state["allocations"][$serviceId])) {
+        return $state["allocations"][$serviceId];
+    }
+
     $nodes = getNumaTopology();
     $plan  = buildAllocationPlan($nodes);
 
@@ -92,32 +137,29 @@ function allocateCore(int $serviceId): array
         return ["node" => 0, "cpu" => 0];
     }
 
-    $index = count($map);
-    $slot  = $plan[$index % count($plan)];
+    $slot = $plan[$state["cursor"] % count($plan)];
+    $state["cursor"]++;
 
-    $map[$serviceId] = $slot;
-    file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
+    $state["allocations"][$serviceId] = $slot;
+    saveCoreState($state);
 
     return $slot;
 }
 
-/* ---------- HELPERS ---------- */
 function freeCore(int $serviceId): void
 {
-    global $coreFile;
-    $map = json_decode(file_get_contents($coreFile), true) ?: [];
+    $state = loadCoreState();
 
-    if (isset($map[$serviceId])) {
-        unset($map[$serviceId]);
-        file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
+    if (isset($state["allocations"][$serviceId])) {
+        unset($state["allocations"][$serviceId]);
+        saveCoreState($state);
     }
 }
 
 function getServiceCore(int $serviceId): ?array
 {
-    global $coreFile;
-    $map = json_decode(file_get_contents($coreFile), true) ?: [];
-    return $map[$serviceId] ?? null;
+    $state = loadCoreState();
+    return $state["allocations"][$serviceId] ?? null;
 }
 
 $jsonFile = __DIR__ . "/input.json";
@@ -161,41 +203,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
     $core = (int)$alloc["cpu"];
     $node = (int)$alloc["node"];
 
-    $ffmpeg = 'numactl --cpunodebind=' . $node .
-        ' --membind=' . $node .
-        ' taskset -c ' . $core . ' ffmpeg -hide_banner -loglevel info \
- -thread_queue_size 65536 \
- -fflags +genpts+discardcorrupt+nobuffer \
- -readrate 1.0 \
- -i "udp://@' . $new["input_udp"] . '?fifo_size=100000000&buffer_size=100000000&overrun_nonfatal=1" \
- -vf "setpts=PTS-STARTPTS,yadif=mode=0:parity=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" \
- -c:v ' . $new["video_format"] . ' \
- -threads 1 \
- -r 25 \
- -fps_mode cfr \
- -g 12 \
- -bf 0 \
- -b:v ' . $new["video_bitrate"] . 'k \
- -minrate ' . $new["video_bitrate"] . 'k \
- -maxrate ' . $new["video_bitrate"] . 'k \
- -bufsize ' . $new["video_bitrate"] . 'k \
- -c:a ' . $new["audio_format"] . ' \
- -b:a ' . $new["audio_bitrate"] . 'k \
- -ar 48000 -ac 2 \
- -af "volume=' . $new["volume"] . 'dB,aresample=async=1000" \
- -metadata service_provider="ShreeBhattJI" ';
+    $ffmpeg = 'numactl --cpunodebind=' . $node
+        . ' --membind=' . $node
+        . ' taskset -c ' . $core
+        . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 65536 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
+        . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=100000000&buffer_size=100000000&overrun_nonfatal=1"'
+        . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
+        . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 '
+        . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize 1835k '
+        . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
+        . ' -metadata service_provider="ShreeBhattJI" ';
     if ($new["service_name"] !== "") {
         $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
     }
-    $ffmpeg .= '-pcr_period 20 \
- -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
+    $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
 
 
     if ($new["service_name"] !== "")
         $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '"';
     $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000"';
-
-
 
     file_put_contents("/var/www/encoder/{$new["id"]}.sh", $ffmpeg);
 
@@ -261,35 +287,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
             $node = (int)$alloc["node"];
 
 
-            $ffmpeg = 'numactl --cpunodebind=' . $node .
-                ' --membind=' . $node .
-                ' taskset -c ' . $core . ' ffmpeg -hide_banner -loglevel info \
- -thread_queue_size 65536 \
- -fflags +genpts+discardcorrupt+nobuffer \
- -readrate 1.0 \
- -i "udp://@' . $new["input_udp"] . '?fifo_size=100000000&buffer_size=100000000&overrun_nonfatal=1" \
- -vf "setpts=PTS-STARTPTS,yadif=mode=0:parity=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" \
- -c:v ' . $new["video_format"] . ' \
- -threads 1 \
- -r 25 \
- -fps_mode cfr \
- -g 12 \
- -bf 0 \
- -b:v ' . $new["video_bitrate"] . 'k \
- -minrate ' . $new["video_bitrate"] . 'k \
- -maxrate ' . $new["video_bitrate"] . 'k \
- -bufsize ' . $new["video_bitrate"] . 'k \
- -c:a ' . $new["audio_format"] . ' \
- -b:a ' . $new["audio_bitrate"] . 'k \
- -ar 48000 -ac 2 \
- -af "volume=' . $new["volume"] . 'dB,aresample=async=1000" \
- -metadata service_provider="ShreeBhattJI" ';
+            $ffmpeg = 'numactl --cpunodebind=' . $node
+                . ' --membind=' . $node
+                . ' taskset -c ' . $core
+                . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 65536 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
+                . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=100000000&buffer_size=100000000&overrun_nonfatal=1"'
+                . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
+                . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 '
+                . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize 1835k '
+                . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
+                . ' -metadata service_provider="ShreeBhattJI" ';
             if ($new["service_name"] !== "") {
                 $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
             }
-            $ffmpeg .= '-pcr_period 20 \
- -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
+            $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
 
+
+            if ($new["service_name"] !== "")
+                $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '"';
+            $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000"';
 
 
             file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
