@@ -7,7 +7,7 @@ if (!file_exists($coreFile)) {
     file_put_contents($coreFile, json_encode([]));
 }
 
-/* Read NUMA topology */
+/* ---------- STEP 1: READ & COUNT NUMA TOPOLOGY ---------- */
 function getNumaTopology(): array
 {
     $out = shell_exec("numactl --hardware");
@@ -18,7 +18,12 @@ function getNumaTopology(): array
             $node = (int)$m[1];
             $cpus = array_map('intval', preg_split('/\s+/', trim($m[2])));
             sort($cpus);
-            $nodes[$node] = $cpus;
+
+            $nodes[$node] = [
+                "all"  => $cpus,
+                "even" => array_values(array_filter($cpus, fn($c) => $c % 2 === 0)),
+                "odd"  => array_values(array_filter($cpus, fn($c) => $c % 2 === 1)),
+            ];
         }
     }
 
@@ -26,82 +31,77 @@ function getNumaTopology(): array
     return $nodes;
 }
 
-/* Allocate core with EVEN-first, ODD-later, safe round robin */
+/* ---------- STEP 2: BUILD GLOBAL ROUND-ROBIN PLAN ---------- */
+function buildAllocationPlan(array $nodes): array
+{
+    $plan = [];
+    $nodeIds = array_keys($nodes);
+    $nodeCount = count($nodeIds);
+
+    if ($nodeCount === 0) {
+        return $plan;
+    }
+
+    /* EVEN cores first (physical cores) */
+    $maxEven = 0;
+    foreach ($nodes as $n) {
+        $maxEven = max($maxEven, count($n["even"]));
+    }
+
+    for ($coreIndex = 0; $coreIndex < $maxEven; $coreIndex++) {
+        foreach ($nodeIds as $node) {
+            if (isset($nodes[$node]["even"][$coreIndex])) {
+                $plan[] = [
+                    "node" => $node,
+                    "cpu"  => $nodes[$node]["even"][$coreIndex]
+                ];
+            }
+        }
+    }
+
+    /* ODD cores next (hyper-threads) */
+    $maxOdd = 0;
+    foreach ($nodes as $n) {
+        $maxOdd = max($maxOdd, count($n["odd"]));
+    }
+
+    for ($coreIndex = 0; $coreIndex < $maxOdd; $coreIndex++) {
+        foreach ($nodeIds as $node) {
+            if (isset($nodes[$node]["odd"][$coreIndex])) {
+                $plan[] = [
+                    "node" => $node,
+                    "cpu"  => $nodes[$node]["odd"][$coreIndex]
+                ];
+            }
+        }
+    }
+
+    return $plan;
+}
+
+/* ---------- STEP 3: ALLOCATE USING PRECOMPUTED PLAN ---------- */
 function allocateCore(int $serviceId): array
 {
     global $coreFile;
 
     $map   = json_decode(file_get_contents($coreFile), true) ?: [];
     $nodes = getNumaTopology();
+    $plan  = buildAllocationPlan($nodes);
 
-    if (empty($nodes)) {
+    if (empty($plan)) {
         return ["node" => 0, "cpu" => 0];
-    }
-
-    /* Split CPUs per node */
-    $even = $odd = [];
-    foreach ($nodes as $n => $cpus) {
-        $even[$n] = array_values(array_filter($cpus, fn($c) => $c % 2 === 0));
-        $odd[$n]  = array_values(array_filter($cpus, fn($c) => $c % 2 === 1));
     }
 
     $index = count($map);
+    $slot  = $plan[$index % count($plan)];
 
-    /* Count total EVEN cores */
-    $totalEven = 0;
-    foreach ($even as $cpus) {
-        $totalEven += count($cpus);
-    }
-
-    /* Select phase */
-    if ($index < $totalEven) {
-        $phaseCpus = $even;
-        $phaseIndex = $index;
-    } else {
-        $phaseCpus = $odd;
-        $phaseIndex = $index - $totalEven;
-    }
-
-    /* Build list of nodes that actually have CPUs in this phase */
-    $activeNodes = [];
-    foreach ($phaseCpus as $n => $cpus) {
-        if (!empty($cpus)) {
-            $activeNodes[$n] = $cpus;
-        }
-    }
-
-    if (empty($activeNodes)) {
-        // Absolute fallback (should never happen)
-        return ["node" => 0, "cpu" => 0];
-    }
-
-    $nodeIds   = array_keys($activeNodes);
-    $nodeCount = count($nodeIds);
-
-    /*
-     * Correct round-robin math
-     * First exhaust core index across all nodes,
-     * then move to next core.
-     */
-    $nodeIndex = $phaseIndex % $nodeCount;
-    $coreIndex = intdiv($phaseIndex, $nodeCount);
-
-    $node = $nodeIds[$nodeIndex];
-    $cpuList = $activeNodes[$node];
-
-    // Safe wrap (never divide by zero now)
-    $cpu = $cpuList[$coreIndex % count($cpuList)];
-
-    $map[$serviceId] = [
-        "node" => $node,
-        "cpu"  => $cpu
-    ];
-
+    $map[$serviceId] = $slot;
     file_put_contents($coreFile, json_encode($map, JSON_PRETTY_PRINT));
-    return $map[$serviceId];
+
+    return $slot;
 }
 
-/* Free core */
+/* ---------- HELPERS ---------- */
 function freeCore(int $serviceId): void
 {
     global $coreFile;
@@ -113,7 +113,6 @@ function freeCore(int $serviceId): void
     }
 }
 
-/* Get assigned core */
 function getServiceCore(int $serviceId): ?array
 {
     global $coreFile;
