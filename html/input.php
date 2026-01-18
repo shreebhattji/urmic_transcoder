@@ -1,8 +1,6 @@
 <?php include 'header.php'; ?>
 <?php
 
-<?php
-
 $coreFile = "/var/www/core.json";
 
 if (!file_exists($coreFile)) {
