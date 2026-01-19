@@ -27,20 +27,18 @@ function saveCoreState(array $state): void
 }
 
 /* ---------------------------------------------------------
-   NUMA + SMT TOPOLOGY (SOURCE OF TRUTH)
+   NUMA TOPOLOGY
 --------------------------------------------------------- */
 
 function getNumaTopology(): array
 {
     $nodes = [];
 
-    /* discover NUMA nodes */
     foreach (glob('/sys/devices/system/node/node*') as $nodePath) {
         $node = (int)str_replace('node', '', basename($nodePath));
         $nodes[$node] = [];
     }
 
-    /* map cpu -> node -> core_id */
     foreach (glob('/sys/devices/system/cpu/cpu[0-9]*') as $cpuPath) {
         $cpu = (int)str_replace('cpu', '', basename($cpuPath));
         $topo = "$cpuPath/topology";
@@ -64,12 +62,11 @@ function getNumaTopology(): array
         $nodes[$node][$coreId][] = $cpu;
     }
 
-    /* normalize ordering */
     ksort($nodes);
     foreach ($nodes as &$cores) {
         ksort($cores);
         foreach ($cores as &$threads) {
-            sort($threads); // primary thread first
+            sort($threads);
         }
     }
 
@@ -77,37 +74,50 @@ function getNumaTopology(): array
 }
 
 /* ---------------------------------------------------------
-   BUILD GLOBAL ROUND-ROBIN PLAN
-   EVEN CPUs FIRST → ODD CPUs
+   NUMA-AWARE ROUND-ROBIN PLAN
 --------------------------------------------------------- */
 
 function buildAllocationPlan(array $nodes): array
 {
-    $even = [];
-    $odd  = [];
+    $perNode = [];
 
+    /* build per-node even → odd cpu lists */
     foreach ($nodes as $node => $cores) {
-        foreach ($cores as $coreId => $threads) {
-            foreach ($threads as $cpu) {
-                $entry = [
-                    "node" => $node,
-                    "cpu"  => $cpu
-                ];
+        $even = [];
+        $odd  = [];
 
+        foreach ($cores as $threads) {
+            foreach ($threads as $cpu) {
                 if (($cpu % 2) === 0) {
-                    $even[] = $entry;
+                    $even[] = $cpu;
                 } else {
-                    $odd[] = $entry;
+                    $odd[] = $cpu;
                 }
+            }
+        }
+
+        sort($even);
+        sort($odd);
+
+        $perNode[$node] = array_merge($even, $odd);
+    }
+
+    /* interleave nodes (true NUMA rotation) */
+    $plan = [];
+    $max = max(array_map('count', $perNode));
+
+    for ($i = 0; $i < $max; $i++) {
+        foreach ($perNode as $node => $cpus) {
+            if (isset($cpus[$i])) {
+                $plan[] = [
+                    "node" => $node,
+                    "cpu"  => $cpus[$i]
+                ];
             }
         }
     }
 
-    /* deterministic ordering */
-    usort($even, fn($a, $b) => $a["cpu"] <=> $b["cpu"]);
-    usort($odd,  fn($a, $b) => $a["cpu"] <=> $b["cpu"]);
-
-    return array_merge($even, $odd);
+    return $plan;
 }
 
 /* ---------------------------------------------------------
@@ -141,11 +151,8 @@ function allocateCore(int $serviceId): array
 function freeCore(int $serviceId): void
 {
     $state = loadCoreState();
-
-    if (isset($state["allocations"][$serviceId])) {
-        unset($state["allocations"][$serviceId]);
-        saveCoreState($state);
-    }
+    unset($state["allocations"][$serviceId]);
+    saveCoreState($state);
 }
 
 function getServiceCore(int $serviceId): ?array
@@ -270,9 +277,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
             ];
 
             $new = $row;
-            $alloc = getServiceCore($id);
+            $alloc = getServiceCore($new["id"]);
             if ($alloc === null) {
-                $alloc = allocateCore($id);
+                $alloc = allocateCore($new["id"]);
             }
 
             $core = (int)$alloc["cpu"];
