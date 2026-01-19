@@ -1,6 +1,7 @@
 <?php include 'header.php'; ?>
 <?php
 
+
 $coreFile = "/var/www/core.json";
 
 /* ---------------------------------------------------------
@@ -16,7 +17,7 @@ function loadCoreState(): array
     }
 
     $state = json_decode(file_get_contents($coreFile), true);
-    return $state ?: ["cursor" => 0, "allocations" => []];
+    return is_array($state) ? $state : ["cursor" => 0, "allocations" => []];
 }
 
 function saveCoreState(array $state): void
@@ -33,13 +34,13 @@ function getNumaTopology(): array
 {
     $nodes = [];
 
-    /* discover nodes */
+    /* discover NUMA nodes */
     foreach (glob('/sys/devices/system/node/node*') as $nodePath) {
         $node = (int)str_replace('node', '', basename($nodePath));
         $nodes[$node] = [];
     }
 
-    /* read cpu → node + core_id */
+    /* map cpu -> node -> core_id */
     foreach (glob('/sys/devices/system/cpu/cpu[0-9]*') as $cpuPath) {
         $cpu = (int)str_replace('cpu', '', basename($cpuPath));
         $topo = "$cpuPath/topology";
@@ -77,45 +78,36 @@ function getNumaTopology(): array
 
 /* ---------------------------------------------------------
    BUILD GLOBAL ROUND-ROBIN PLAN
+   EVEN CPUs FIRST → ODD CPUs
 --------------------------------------------------------- */
 
 function buildAllocationPlan(array $nodes): array
 {
-    $plan = [];
+    $even = [];
+    $odd  = [];
 
-    if (empty($nodes)) {
-        return $plan;
-    }
-
-    $maxCores = max(array_map('count', $nodes));
-
-    /* PASS 1 — physical cores only */
-    for ($i = 0; $i < $maxCores; $i++) {
-        foreach ($nodes as $node => $cores) {
-            $coreIds = array_keys($cores);
-            if (isset($coreIds[$i])) {
-                $plan[] = [
+    foreach ($nodes as $node => $cores) {
+        foreach ($cores as $coreId => $threads) {
+            foreach ($threads as $cpu) {
+                $entry = [
                     "node" => $node,
-                    "cpu"  => $cores[$coreIds[$i]][0]
+                    "cpu"  => $cpu
                 ];
+
+                if (($cpu % 2) === 0) {
+                    $even[] = $entry;
+                } else {
+                    $odd[] = $entry;
+                }
             }
         }
     }
 
-    /* PASS 2 — SMT siblings */
-    for ($i = 0; $i < $maxCores; $i++) {
-        foreach ($nodes as $node => $cores) {
-            $coreIds = array_keys($cores);
-            if (isset($coreIds[$i]) && count($cores[$coreIds[$i]]) > 1) {
-                $plan[] = [
-                    "node" => $node,
-                    "cpu"  => $cores[$coreIds[$i]][1]
-                ];
-            }
-        }
-    }
+    /* deterministic ordering */
+    usort($even, fn($a, $b) => $a["cpu"] <=> $b["cpu"]);
+    usort($odd,  fn($a, $b) => $a["cpu"] <=> $b["cpu"]);
 
-    return $plan;
+    return array_merge($even, $odd);
 }
 
 /* ---------------------------------------------------------
