@@ -187,9 +187,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
     $data[] = $new;
     file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
-    $alloc = getServiceCore($id);
+    $alloc = getServiceCore($new["id"]);
     if ($alloc === null) {
-        $alloc = allocateCore($id);
+        $alloc = allocateCore($new["id"]);
     }
 
     $core = (int)$alloc["cpu"];
