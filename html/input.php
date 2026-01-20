@@ -204,7 +204,7 @@ function all_service_start()
         $alloc = allocateCore($new["id"]);
         $core = (int)$alloc["cpu"];
         $node = (int)$alloc["node"];
-        $new["service"] = "enable5";
+        $new["service"] = "enable";
         $ffmpeg = 'numactl --cpunodebind=' . $node
             . ' --membind=' . $node
             . ' taskset -c ' . $core
@@ -255,8 +255,6 @@ function all_service_stop()
         if (isset($new["service"]) && $new["service"] === "enable") {
             $new["service"] = "disable";
         }
-        exec("sudo systemctl enable encoder@{$new["id"]}");
-        exec("sudo systemctl restart encoder@{$new["id"]}");
     }
     unset($new);
     file_put_contents(
