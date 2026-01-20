@@ -1,21 +1,15 @@
 <?php include 'header.php'; ?>
 <?php
 
-
 $coreFile = "/var/www/core.json";
 
 /* ---------------------------------------------------------
    STATE HELPERS
 --------------------------------------------------------- */
-
 function loadCoreState(): array
 {
     global $coreFile;
-
-    if (!file_exists($coreFile)) {
-        return ["cursor" => 0, "allocations" => []];
-    }
-
+    if (!file_exists($coreFile)) return ["cursor" => 0, "allocations" => []];
     $state = json_decode(file_get_contents($coreFile), true);
     return is_array($state) ? $state : ["cursor" => 0, "allocations" => []];
 }
@@ -27,138 +21,248 @@ function saveCoreState(array $state): void
 }
 
 /* ---------------------------------------------------------
-   NUMA TOPOLOGY
+   ADVANCED TOPOLOGY PLANNER
 --------------------------------------------------------- */
-
-function getNumaTopology(): array
+function buildSequentialNumaPlan(): array
 {
     $nodes = [];
+    $nodePaths = glob('/sys/devices/system/node/node*', GLOB_ONLYDIR);
 
-    foreach (glob('/sys/devices/system/node/node*') as $nodePath) {
-        $node = (int)str_replace('node', '', basename($nodePath));
-        $nodes[$node] = [];
-    }
+    foreach ($nodePaths as $nodePath) {
+        $nodeId = (int)str_replace('node', '', basename($nodePath));
+        $cpuList = trim(file_get_contents("$nodePath/cpulist"));
 
-    foreach (glob('/sys/devices/system/cpu/cpu[0-9]*') as $cpuPath) {
-        $cpu = (int)str_replace('cpu', '', basename($cpuPath));
-        $topo = "$cpuPath/topology";
+        $evens = [];
+        $odds = [];
 
-        if (!is_dir($topo)) {
-            continue;
-        }
+        // Parse CPUList (handles "0-21,44-65")
+        foreach (explode(',', $cpuList) as $part) {
+            $range = explode('-', $part);
+            $start = (int)$range[0];
+            $end = isset($range[1]) ? (int)$range[1] : $start;
 
-        $coreId = (int)trim(file_get_contents("$topo/core_id"));
-
-        $node = null;
-        foreach (glob("$cpuPath/node*") as $n) {
-            $node = (int)str_replace('node', '', basename($n));
-            break;
-        }
-
-        if ($node === null) {
-            continue;
-        }
-
-        $nodes[$node][$coreId][] = $cpu;
-    }
-
-    ksort($nodes);
-    foreach ($nodes as &$cores) {
-        ksort($cores);
-        foreach ($cores as &$threads) {
-            sort($threads);
-        }
-    }
-
-    return $nodes;
-}
-
-/* ---------------------------------------------------------
-   NUMA-AWARE ROUND-ROBIN PLAN
---------------------------------------------------------- */
-
-function buildAllocationPlan(array $nodes): array
-{
-    $perNode = [];
-
-    /* build per-node even → odd cpu lists */
-    foreach ($nodes as $node => $cores) {
-        $even = [];
-        $odd  = [];
-
-        foreach ($cores as $threads) {
-            foreach ($threads as $cpu) {
-                if (($cpu % 2) === 0) {
-                    $even[] = $cpu;
-                } else {
-                    $odd[] = $cpu;
-                }
+            for ($i = $start; $i <= $end; $i++) {
+                if ($i % 2 === 0) $evens[] = $i;
+                else $odds[] = $i;
             }
         }
-
-        sort($even);
-        sort($odd);
-
-        $perNode[$node] = array_merge($even, $odd);
+        $nodes[$nodeId] = ['even' => $evens, 'odd' => $odds];
     }
 
-    /* interleave nodes (true NUMA rotation) */
-    $plan = [];
-    $max = max(array_map('count', $perNode));
+    $finalPlan = [];
+    $nodeIds = array_keys($nodes);
+    sort($nodeIds);
 
-    for ($i = 0; $i < $max; $i++) {
-        foreach ($perNode as $node => $cpus) {
-            if (isset($cpus[$i])) {
-                $plan[] = [
-                    "node" => $node,
-                    "cpu"  => $cpus[$i]
-                ];
+    // Phase 1: All Even Cores, interleaving Nodes
+    $maxEven = 0;
+    foreach ($nodes as $n) $maxEven = max($maxEven, count($n['even']));
+
+    for ($i = 0; $i < $maxEven; $i++) {
+        foreach ($nodeIds as $nid) {
+            if (isset($nodes[$nid]['even'][$i])) {
+                $finalPlan[] = ["node" => $nid, "cpu" => $nodes[$nid]['even'][$i]];
             }
         }
     }
 
-    return $plan;
+    // Phase 2: All Odd Cores, interleaving Nodes
+    $maxOdd = 0;
+    foreach ($nodes as $n) $maxOdd = max($maxOdd, count($n['odd']));
+
+    for ($i = 0; $i < $maxOdd; $i++) {
+        foreach ($nodeIds as $nid) {
+            if (isset($nodes[$nid]['odd'][$i])) {
+                $finalPlan[] = ["node" => $nid, "cpu" => $nodes[$nid]['odd'][$i]];
+            }
+        }
+    }
+
+    return $finalPlan;
 }
 
 /* ---------------------------------------------------------
-   ALLOCATION API
+   ALLOCATION API (With Gap Filling)
 --------------------------------------------------------- */
 
 function allocateCore(int $serviceId): array
 {
     $state = loadCoreState();
 
+    // 1. If already assigned, return existing
     if (isset($state["allocations"][$serviceId])) {
         return $state["allocations"][$serviceId];
     }
 
-    $nodes = getNumaTopology();
-    $plan  = buildAllocationPlan($nodes);
+    $plan = buildSequentialNumaPlan();
+    $occupiedCpus = array_column($state["allocations"], 'cpu');
 
-    if (empty($plan)) {
-        return ["node" => 0, "cpu" => 0];
+    // 2. REALLOCATION LOGIC: Find the first core in the plan that is NOT occupied
+    // This follows your rules: Even Node 0, Even Node 1... then Odds.
+    foreach ($plan as $index => $slot) {
+        if (!in_array($slot['cpu'], $occupiedCpus)) {
+            $state["allocations"][$serviceId] = $slot;
+
+            // Sync cursor to the next logical position for non-gap filling
+            $state["cursor"] = ($index + 1) % count($plan);
+
+            saveCoreState($state);
+            return $slot;
+        }
     }
 
-    $slot = $plan[$state["cursor"] % count($plan)];
+    // 3. OVERFLOW: If all 88 threads are full, repeat from cursor (Round Robin)
+    $slotIndex = $state["cursor"] % count($plan);
+    $slot = $plan[$slotIndex];
+
     $state["cursor"]++;
-
     $state["allocations"][$serviceId] = $slot;
-    saveCoreState($state);
 
+    saveCoreState($state);
     return $slot;
 }
 
 function freeCore(int $serviceId): void
 {
     $state = loadCoreState();
-    unset($state["allocations"][$serviceId]);
-    saveCoreState($state);
+    if (isset($state["allocations"][$serviceId])) {
+        unset($state["allocations"][$serviceId]);
+        // Note: We don't reset the cursor here, allocateCore will 
+        // find this empty slot automatically on the next call.
+        saveCoreState($state);
+    }
 }
 
-function getServiceCore(int $serviceId): ?array
+function all_service_update()
 {
-    $state = loadCoreState();
-    return $state["allocations"][$serviceId] ?? null;
+    unlink("/var/www/core.json");
+    $script = __DIR__ . "/stop_all_encoders.sh";
+    exec("sudo chmod +x " . $script);
+    exec("sudo {$script} 2>&1", $output, $code);
+
+    $jsonFile = __DIR__ . "/input.json";
+    if (!file_exists($jsonFile)) {
+        die("input.json not found");
+    }
+    $data = json_decode(file_get_contents($jsonFile), true);
+
+    if (!is_array($data)) {
+        die("Invalid JSON format");
+    }
+
+    foreach ($data as &$new) {
+        $alloc = allocateCore($new["id"]);
+        $core = (int)$alloc["cpu"];
+        $node = (int)$alloc["node"];
+
+        $ffmpeg = 'numactl --cpunodebind=' . $node
+            . ' --membind=' . $node
+            . ' taskset -c ' . $core
+            . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 65536 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
+            . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=100000000&buffer_size=100000000&overrun_nonfatal=1"'
+            . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
+            . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 12 -bf 0 -qmin 2 -qmax 18 -trellis 1'
+            . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' . ($new["video_bitrate"] + 500) . 'k '
+            . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
+            . ' -metadata service_provider="ShreeBhattJI" ';
+        if ($new["service_name"] !== "") {
+            $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
+        }
+        $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
+
+        file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
+
+        if ($new["service"] === "enable") {
+            exec("sudo systemctl enable encoder@{$new["id"]}");
+            exec("sudo systemctl restart encoder@{$new["id"]}");
+        }
+    }
+    unset($new);
+    file_put_contents(
+        $jsonFile,
+        json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    );
+}
+
+function all_service_start()
+{
+    unlink("/var/www/core.json");
+    $script = __DIR__ . "/stop_all_encoders.sh";
+    exec("sudo chmod +x " . $script);
+    exec("sudo {$script} 2>&1", $output, $code);
+
+    $jsonFile = __DIR__ . "/input.json";
+    if (!file_exists($jsonFile)) {
+        die("input.json not found");
+    }
+    $data = json_decode(file_get_contents($jsonFile), true);
+
+    if (!is_array($data)) {
+        die("Invalid JSON format");
+    }
+
+    foreach ($data as &$new) {
+        $alloc = allocateCore($new["id"]);
+        $core = (int)$alloc["cpu"];
+        $node = (int)$alloc["node"];
+        $new["service"] = "enable5";
+        $ffmpeg = 'numactl --cpunodebind=' . $node
+            . ' --membind=' . $node
+            . ' taskset -c ' . $core
+            . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 65536 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
+            . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=100000000&buffer_size=100000000&overrun_nonfatal=1"'
+            . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
+            . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 12 -bf 0 -qmin 2 -qmax 18 -trellis 1'
+            . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' . ($new["video_bitrate"] + 500) . 'k '
+            . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
+            . ' -metadata service_provider="ShreeBhattJI" ';
+        if ($new["service_name"] !== "") {
+            $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
+        }
+        $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
+
+        file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
+
+        if ($new["service"] === "enable") {
+            exec("sudo systemctl enable encoder@{$new["id"]}");
+            exec("sudo systemctl restart encoder@{$new["id"]}");
+        }
+    }
+    unset($new);
+    file_put_contents(
+        $jsonFile,
+        json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    );
+}
+
+function all_service_stop()
+{
+    unlink("/var/www/core.json");
+    $script = __DIR__ . "/stop_all_encoders.sh";
+    exec("sudo chmod +x " . $script);
+    exec("sudo {$script} 2>&1", $output, $code);
+
+    $jsonFile = __DIR__ . "/input.json";
+    if (!file_exists($jsonFile)) {
+        die("input.json not found");
+    }
+    $data = json_decode(file_get_contents($jsonFile), true);
+
+    if (!is_array($data)) {
+        die("Invalid JSON format");
+    }
+
+    foreach ($data as &$new) {
+        if (isset($new["service"]) && $new["service"] === "enable") {
+            $new["service"] = "disable";
+        }
+        exec("sudo systemctl enable encoder@{$new["id"]}");
+        exec("sudo systemctl restart encoder@{$new["id"]}");
+    }
+    unset($new);
+    file_put_contents(
+        $jsonFile,
+        json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    );
 }
 
 $jsonFile = __DIR__ . "/input.json";
@@ -167,103 +271,17 @@ if (!file_exists($jsonFile)) {
 }
 $data = json_decode(file_get_contents($jsonFile), true);
 
-/* Fix old entries missing service_name or volume */
 foreach ($data as $k => $d) {
     if (!isset($d["service_name"])) $data[$k]["service_name"] = "";
     if (!isset($d["volume"])) $data[$k]["volume"] = "0";
 }
 file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
-/* ---------------- ADD NEW ---------------- */
-if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "add") {
-
-    $new = [
-        "id" => time(),
-        "service_name" => $_POST["service_name"],
-        "input_udp" => $_POST["input_udp"],
-        "output_udp" => $_POST["output_udp"],
-        "video_format" => $_POST["video_format"],
-        "audio_format" => $_POST["audio_format"],
-        "resolution" => $_POST["resolution"],
-        "video_bitrate" => $_POST["video_bitrate"],
-        "audio_bitrate" => $_POST["audio_bitrate"],
-        "volume" => $_POST["volume"],
-        "service" => $_POST["service"]
-    ];
-
-    $data[] = $new;
-    file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
-
-    $alloc = getServiceCore($new["id"]);
-    if ($alloc === null) {
-        $alloc = allocateCore($new["id"]);
-    }
-
-    $core = (int)$alloc["cpu"];
-    $node = (int)$alloc["node"];
-
-    $ffmpeg = 'numactl --cpunodebind=' . $node
-        . ' --membind=' . $node
-        . ' taskset -c ' . $core
-        . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 65536 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
-        . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=100000000&buffer_size=100000000&overrun_nonfatal=1"'
-        . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
-        . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 '
-        . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize 1835k '
-        . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
-        . ' -metadata service_provider="ShreeBhattJI" ';
-    if ($new["service_name"] !== "") {
-        $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
-    }
-    $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
-
-
-    if ($new["service_name"] !== "")
-        $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '"';
-    $ffmpeg .= ' -f mpegts "udp://@' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000"';
-
-    file_put_contents("/var/www/encoder/{$new["id"]}.sh", $ffmpeg);
-
-    if ($new["service"] === "enable") {
-        exec("sudo systemctl enable encoder@{$new["id"]}");
-        exec("sudo systemctl restart encoder@{$new["id"]}");
-    }
-    echo "OK";
-    exit;
-}
-
-/* ---------------- DELETE ---------------- */
-if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "delete") {
-
-    $id = intval($_POST["id"]);
-    $newData = [];
-
-    foreach ($data as $row) {
-        if ($row["id"] != $id) $newData[] = $row;
-    }
-
-    file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
-    exec("sudo systemctl stop encoder@$id");
-    exec("sudo systemctl disable encoder@$id");
-    freeCore($id);
-
-    if (file_exists("/var/www/encoder/$id.sh")) unlink("/var/www/encoder/$id.sh");
-
-    echo "OK";
-    exit;
-}
-
-/* ---------------- EDIT ---------------- */
-if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
-
-    $id = intval($_POST["id"]);
-    $newData = [];
-
-    foreach ($data as $row) {
-        if ($row["id"] == $id) {
-
-            $row = [
-                "id" => $id,
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    switch ($_POST["action"]) {
+        case "add":
+            $new = [
+                "id" => time(),
                 "service_name" => $_POST["service_name"],
                 "input_udp" => $_POST["input_udp"],
                 "output_udp" => $_POST["output_udp"],
@@ -276,15 +294,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
                 "service" => $_POST["service"]
             ];
 
-            $new = $row;
-            $alloc = getServiceCore($new["id"]);
-            if ($alloc === null) {
-                $alloc = allocateCore($new["id"]);
-            }
+            $data[] = $new;
+            file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
+            $alloc = allocateCore($new["id"]);
             $core = (int)$alloc["cpu"];
             $node = (int)$alloc["node"];
-
 
             $ffmpeg = 'numactl --cpunodebind=' . $node
                 . ' --membind=' . $node
@@ -292,8 +307,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
                 . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 65536 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
                 . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=100000000&buffer_size=100000000&overrun_nonfatal=1"'
                 . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
-                . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 '
-                . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize 1835k '
+                . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 12 -bf 0 -qmin 2 -qmax 18 -trellis 1'
+                . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' . ($new["video_bitrate"] + 500) . 'k '
                 . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
                 . ' -metadata service_provider="ShreeBhattJI" ';
             if ($new["service_name"] !== "") {
@@ -301,32 +316,108 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "edit") {
             }
             $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
 
-
-            file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
+            file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
 
             if ($new["service"] === "enable") {
-                exec("sudo systemctl enable encoder@$id");
-                exec("sudo systemctl restart encoder@$id");
-            } else {
-                exec("sudo systemctl stop encoder@$id");
-                exec("sudo systemctl disable encoder@$id");
+                exec("sudo systemctl enable encoder@{$new["id"]}");
+                exec("sudo systemctl restart encoder@{$new["id"]}");
             }
-        }
+            echo "OK";
+            exit;
+            break;
+        case "delete":
+            $id = intval($_POST["id"]);
+            $newData = [];
 
-        $newData[] = $row;
+            foreach ($data as $row) {
+                if ($row["id"] != $id) $newData[] = $row;
+            }
+
+            file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
+            exec("sudo systemctl stop encoder@$id");
+            exec("sudo systemctl disable encoder@$id");
+            freeCore($id);
+
+            if (file_exists("/var/www/encoder/$id.sh")) unlink("/var/www/encoder/$id.sh");
+
+            echo "OK";
+            exit;
+            break;
+        case "edit":
+
+            $id = intval($_POST["id"]);
+            $newData = [];
+
+            foreach ($data as $row) {
+                if ($row["id"] == $id) {
+
+                    $row = [
+                        "id" => $id,
+                        "service_name" => $_POST["service_name"],
+                        "input_udp" => $_POST["input_udp"],
+                        "output_udp" => $_POST["output_udp"],
+                        "video_format" => $_POST["video_format"],
+                        "audio_format" => $_POST["audio_format"],
+                        "resolution" => $_POST["resolution"],
+                        "video_bitrate" => $_POST["video_bitrate"],
+                        "audio_bitrate" => $_POST["audio_bitrate"],
+                        "volume" => $_POST["volume"],
+                        "service" => $_POST["service"]
+                    ];
+
+                    $new = $row;
+                    $alloc = allocateCore($new["id"]);
+                    $core = (int)$alloc["cpu"];
+                    $node = (int)$alloc["node"];
+                    $ffmpeg = 'numactl --cpunodebind=' . $node
+                        . ' --membind=' . $node
+                        . ' taskset -c ' . $core
+                        . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 65536 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
+                        . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=100000000&buffer_size=100000000&overrun_nonfatal=1"'
+                        . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
+                        . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 12 -bf 0 -qmin 2 -qmax 18 -trellis 1'
+                        . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' . ($new["video_bitrate"] + 500) . 'k '
+                        . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
+                        . ' -metadata service_provider="ShreeBhattJI" ';
+                    if ($new["service_name"] !== "") {
+                        $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
+                    }
+                    $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
+
+                    file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
+
+                    if ($new["service"] === "enable") {
+                        exec("sudo systemctl enable encoder@$id");
+                        exec("sudo systemctl restart encoder@$id");
+                    } else {
+                        exec("sudo systemctl stop encoder@$id");
+                        exec("sudo systemctl disable encoder@$id");
+                    }
+                }
+
+                $newData[] = $row;
+            }
+
+            file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
+            echo "OK";
+            exit;
+            break;
+        case "restart":
+            $id = intval($_POST["id"]);
+            exec("sudo systemctl restart encoder@$id");
+            echo "OK";
+            exit;
+            break;
+        case "start_all":
+            all_service_start();
+            break;
+        case "stop_all":
+            all_service_stop();
+            break;
+        case "update_all":
+            all_service_update();
+            break;
     }
-
-    file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
-    echo "OK";
-    exit;
-}
-
-/* ---------------- RESTART ---------------- */
-if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
-    $id = intval($_POST["id"]);
-    exec("sudo systemctl restart encoder@$id");
-    echo "OK";
-    exit;
 }
 
 ?>
@@ -400,9 +491,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
 
             <h2>Service List</h2>
             <button onclick="openAddPopup()">Add Service</button>
-            <button>Start All</button>
-            <button>Stop All</button>
-            <button>Update All</button>
+            <div style="margin-top:10px;">
+                <button onclick="submitAction('start_all')">Start All</button>
+                <button onclick="submitAction('stop_all')">Stop All</button>
+                <button onclick="submitAction('update_all')">Update All</button>
+            </div>
+
+            <form id="actionForm" method="post" style="display:none;">
+                <input type="hidden" name="action" id="action">
+            </form>
         </div>
         <table>
             <tr>
@@ -635,6 +732,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $_POST["action"] === "restart") {
             .then(res => {
                 if (res.includes("OK")) alert("Service restarted");
             });
+    }
+
+    function submitAction(action) {
+        const msg = {
+            start_all: "Are you sure you want to START all services?",
+            stop_all: "Are you sure you want to STOP all services?",
+            update_all: "Are you sure you want to UPDATE all services?"
+        };
+
+        if (!msg[action]) return;
+
+        if (confirm(msg[action])) {
+            document.getElementById('action').value = action;
+            document.getElementById('actionForm').submit();
+        }
     }
 </script>
 
