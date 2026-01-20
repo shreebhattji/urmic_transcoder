@@ -1,15 +1,18 @@
 <?php include 'header.php'; ?>
 <?php
-
 $coreFile = "/var/www/core.json";
 
 /* ---------------------------------------------------------
    STATE HELPERS
 --------------------------------------------------------- */
+
 function loadCoreState(): array
 {
     global $coreFile;
-    if (!file_exists($coreFile)) return ["cursor" => 0, "allocations" => []];
+    if (!file_exists($coreFile)) {
+        return ["cursor" => 0, "allocations" => []];
+    }
+
     $state = json_decode(file_get_contents($coreFile), true);
     return is_array($state) ? $state : ["cursor" => 0, "allocations" => []];
 }
@@ -21,8 +24,32 @@ function saveCoreState(array $state): void
 }
 
 /* ---------------------------------------------------------
-   ADVANCED TOPOLOGY PLANNER
+   CPU LIST PARSER
 --------------------------------------------------------- */
+
+function parseCpuList(string $cpuList): array
+{
+    $cpus = [];
+
+    foreach (explode(',', $cpuList) as $part) {
+        if (strpos($part, '-') !== false) {
+            [$start, $end] = array_map('intval', explode('-', $part));
+            for ($i = $start; $i <= $end; $i++) {
+                $cpus[] = $i;
+            }
+        } else {
+            $cpus[] = (int)$part;
+        }
+    }
+
+    sort($cpus);
+    return $cpus;
+}
+
+/* ---------------------------------------------------------
+   NUMA PLAN BUILDER (PHYSICAL-FIRST, NODE ROUND-ROBIN)
+--------------------------------------------------------- */
+
 function buildSequentialNumaPlan(): array
 {
     $nodes = [];
@@ -31,48 +58,23 @@ function buildSequentialNumaPlan(): array
     foreach ($nodePaths as $nodePath) {
         $nodeId = (int)str_replace('node', '', basename($nodePath));
         $cpuList = trim(file_get_contents("$nodePath/cpulist"));
-
-        $evens = [];
-        $odds = [];
-
-        // Parse CPUList (handles "0-21,44-65")
-        foreach (explode(',', $cpuList) as $part) {
-            $range = explode('-', $part);
-            $start = (int)$range[0];
-            $end = isset($range[1]) ? (int)$range[1] : $start;
-
-            for ($i = $start; $i <= $end; $i++) {
-                if ($i % 2 === 0) $evens[] = $i;
-                else $odds[] = $i;
-            }
-        }
-        $nodes[$nodeId] = ['even' => $evens, 'odd' => $odds];
+        $nodes[$nodeId] = parseCpuList($cpuList);
     }
 
-    $finalPlan = [];
+    ksort($nodes);
     $nodeIds = array_keys($nodes);
-    sort($nodeIds);
 
-    // Phase 1: All Even Cores, interleaving Nodes
-    $maxEven = 0;
-    foreach ($nodes as $n) $maxEven = max($maxEven, count($n['even']));
+    // Interleave CPUs across nodes: N0,C0 → N1,C0 → N0,C1 → N1,C1 ...
+    $finalPlan = [];
+    $maxCpus = max(array_map('count', $nodes));
 
-    for ($i = 0; $i < $maxEven; $i++) {
+    for ($i = 0; $i < $maxCpus; $i++) {
         foreach ($nodeIds as $nid) {
-            if (isset($nodes[$nid]['even'][$i])) {
-                $finalPlan[] = ["node" => $nid, "cpu" => $nodes[$nid]['even'][$i]];
-            }
-        }
-    }
-
-    // Phase 2: All Odd Cores, interleaving Nodes
-    $maxOdd = 0;
-    foreach ($nodes as $n) $maxOdd = max($maxOdd, count($n['odd']));
-
-    for ($i = 0; $i < $maxOdd; $i++) {
-        foreach ($nodeIds as $nid) {
-            if (isset($nodes[$nid]['odd'][$i])) {
-                $finalPlan[] = ["node" => $nid, "cpu" => $nodes[$nid]['odd'][$i]];
+            if (isset($nodes[$nid][$i])) {
+                $finalPlan[] = [
+                    "node" => $nid,
+                    "cpu"  => $nodes[$nid][$i],
+                ];
             }
         }
     }
@@ -81,41 +83,42 @@ function buildSequentialNumaPlan(): array
 }
 
 /* ---------------------------------------------------------
-   ALLOCATION API (With Gap Filling)
+   CORE ALLOCATOR (NUMA SAFE)
 --------------------------------------------------------- */
 
 function allocateCore(int $serviceId): array
 {
     $state = loadCoreState();
 
-    // 1. If already assigned, return existing
+    // Already allocated
     if (isset($state["allocations"][$serviceId])) {
         return $state["allocations"][$serviceId];
     }
 
     $plan = buildSequentialNumaPlan();
-    $occupiedCpus = array_column($state["allocations"], 'cpu');
+    $planCount = count($plan);
 
-    // 2. REALLOCATION LOGIC: Find the first core in the plan that is NOT occupied
-    // This follows your rules: Even Node 0, Even Node 1... then Odds.
+    // Build occupied set as node:cpu
+    $occupied = [];
+    foreach ($state["allocations"] as $a) {
+        $occupied[$a["node"] . ":" . $a["cpu"]] = true;
+    }
+
+    // GAP FILLING (authoritative)
     foreach ($plan as $index => $slot) {
-        if (!in_array($slot['cpu'], $occupiedCpus)) {
+        $key = $slot["node"] . ":" . $slot["cpu"];
+        if (!isset($occupied[$key])) {
             $state["allocations"][$serviceId] = $slot;
-
-            // Sync cursor to the next logical position for non-gap filling
-            $state["cursor"] = ($index + 1) % count($plan);
-
+            $state["cursor"] = ($index + 1) % $planCount;
             saveCoreState($state);
             return $slot;
         }
     }
 
-    // 3. OVERFLOW: If all 88 threads are full, repeat from cursor (Round Robin)
-    $slotIndex = $state["cursor"] % count($plan);
-    $slot = $plan[$slotIndex];
-
-    $state["cursor"]++;
+    // OVERFLOW (true round-robin)
+    $slot = $plan[$state["cursor"] % $planCount];
     $state["allocations"][$serviceId] = $slot;
+    $state["cursor"] = ($state["cursor"] + 1) % $planCount;
 
     saveCoreState($state);
     return $slot;
@@ -126,8 +129,6 @@ function freeCore(int $serviceId): void
     $state = loadCoreState();
     if (isset($state["allocations"][$serviceId])) {
         unset($state["allocations"][$serviceId]);
-        // Note: We don't reset the cursor here, allocateCore will 
-        // find this empty slot automatically on the next call.
         saveCoreState($state);
     }
 }
@@ -531,7 +532,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <td><?= $row["volume"] ?> dB</td>
                     <td><?= $row["service"] ?></td>
 
-                    <td>
+                    <td style="margin-top:3px;">
                         <button class="edit-btn" onclick='openEditPopup(<?= json_encode($row) ?>)'>Edit</button>
                         <button class="restart-btn" onclick="restartService(<?= $row['id'] ?>)">Restart</button>
                         <button class="delete-btn" onclick="deleteService(<?= $row['id'] ?>)">Delete</button>
