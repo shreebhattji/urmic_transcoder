@@ -500,47 +500,56 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <input type="hidden" name="action" id="action">
             </form>
         </div>
-        <table>
-            <tr>
-                <th>No</th>
-                <th>ID</th>
-                <th>Service Name</th>
-                <th>Input</th>
-                <th>Output</th>
-                <th>Video</th>
-                <th>Audio</th>
-                <th>Resolution</th>
-                <th>V-Bitrate</th>
-                <th>A-Bitrate</th>
-                <th>Volume (dB)</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-            <?php $i = 1; ?>
-            <?php foreach ($data as $row): ?>
+        <form method="post" id="bulkForm">
+            <input type="hidden" name="action" id="bulkAction">
+            <table>
                 <tr>
-                    <td><?= $i++ ?></td>
-                    <td><?= $row["id"] ?></td>
-                    <td><?= $row["service_name"] ?></td>
-                    <td><?= $row["input_udp"] ?></td>
-                    <td><?= $row["output_udp"] ?></td>
-                    <td><?= $row["video_format"] ?></td>
-                    <td><?= $row["audio_format"] ?></td>
-                    <td><?= $row["resolution"] ?></td>
-                    <td><?= $row["video_bitrate"] ?></td>
-                    <td><?= $row["audio_bitrate"] ?></td>
-                    <td><?= $row["volume"] ?> dB</td>
-                    <td><?= $row["service"] ?></td>
-
-                    <td style="margin-top:3px;">
-                        <button class="edit-btn" onclick='openEditPopup(<?= json_encode($row) ?>)'>Edit</button>
-                        <button class="restart-btn" onclick="restartService(<?= $row['id'] ?>)">Restart</button>
-                        <button class="delete-btn" onclick="deleteService(<?= $row['id'] ?>)">Delete</button>
-                    </td>
+                    <th>
+                        <input type="checkbox" onclick="toggleAll(this)">No
+                    </th>
+                    <th>ID</th>
+                    <th>Service Name</th>
+                    <th>Input</th>
+                    <th>Output</th>
+                    <th>Video</th>
+                    <th>Audio</th>
+                    <th>Resolution</th>
+                    <th>V-Bitrate</th>
+                    <th>A-Bitrate</th>
+                    <th>Volume (dB)</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                 </tr>
-            <?php endforeach; ?>
-        </table>
+                <?php $i = 1; ?>
+                <?php foreach ($data as $row): ?>
+                    <tr>
+                        <td><?= $i++ ?></td>
+                        <td>
+                            <input type="checkbox"
+                                class="rowCheckbox"
+                                name="ids[]"
+                                value="<?= $row['id'] ?>">
+                        </td>
+                        <td><?= $row["service_name"] ?></td>
+                        <td><?= $row["input_udp"] ?></td>
+                        <td><?= $row["output_udp"] ?></td>
+                        <td><?= $row["video_format"] ?></td>
+                        <td><?= $row["audio_format"] ?></td>
+                        <td><?= $row["resolution"] ?></td>
+                        <td><?= $row["video_bitrate"] ?></td>
+                        <td><?= $row["audio_bitrate"] ?></td>
+                        <td><?= $row["volume"] ?> dB</td>
+                        <td><?= $row["service"] ?></td>
 
+                        <td style="margin-top:3px;">
+                            <button class="edit-btn" onclick='openEditPopup(<?= json_encode($row) ?>)'>Edit</button>
+                            <button class="restart-btn" onclick="restartService(<?= $row['id'] ?>)">Restart</button>
+                            <button class="delete-btn" onclick="deleteService(<?= $row['id'] ?>)">Delete</button>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+        </form>
         <!-- POPUP -->
         <div id="overlay"></div>
         <div id="popup">
@@ -601,6 +610,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </div>
 
 <script>
+    function toggleAll(master) {
+        document.querySelectorAll('.rowCheckbox')
+            .forEach(cb => cb.checked = master.checked);
+    }
+
+    function submitBulk(action) {
+        const checked = document.querySelectorAll('.rowCheckbox:checked');
+
+        if (checked.length === 0) {
+            alert('No services selected');
+            return;
+        }
+
+        if (!confirm('Are you sure?')) {
+            return;
+        }
+
+        document.getElementById('bulkAction').value = action;
+        document.getElementById('bulkForm').submit();
+    }
+
     function openAddPopup() {
         document.getElementById("popup_title").innerText = "Add Service";
         document.getElementById("saveBtn").setAttribute("onclick", "saveService()");
