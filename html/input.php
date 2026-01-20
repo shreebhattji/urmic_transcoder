@@ -161,7 +161,7 @@ function all_service_update()
             . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 8192 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
             . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=10000000&buffer_size=10000000&overrun_nonfatal=1"'
             . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
-            . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 -qmin 2 -qmax 12 -trellis 1'
+            . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 -qmin 2 -qmax 10 -trellis 1'
             . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ["video_bitrate"] . 'k '
             . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
             . ' -metadata service_provider="ShreeBhattJI" ';
@@ -212,7 +212,7 @@ function all_service_start()
             . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 8192 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
             . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=10000000&buffer_size=10000000&overrun_nonfatal=1"'
             . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
-            . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 -qmin 2 -qmax 12 -trellis 1'
+            . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 -qmin 2 -qmax 10 -trellis 1'
             . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ["video_bitrate"] . 'k '
             . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
             . ' -metadata service_provider="ShreeBhattJI" ';
@@ -306,7 +306,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 8192 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
                 . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=10000000&buffer_size=10000000&overrun_nonfatal=1"'
                 . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
-                . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 -qmin 2 -qmax 12 -trellis 1'
+                . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 -qmin 2 -qmax 10 -trellis 1'
                 . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ["video_bitrate"] . 'k '
                 . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
                 . ' -metadata service_provider="ShreeBhattJI" ';
@@ -374,7 +374,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 8192 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
                         . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=10000000&buffer_size=10000000&overrun_nonfatal=1"'
                         . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
-                        . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 -qmin 2 -qmax 12 -trellis 1'
+                        . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 -qmin 2 -qmax 10 -trellis 1'
                         . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ["video_bitrate"] . 'k '
                         . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
                         . ' -metadata service_provider="ShreeBhattJI" ';
