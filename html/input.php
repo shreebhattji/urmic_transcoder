@@ -162,7 +162,7 @@ function all_service_update()
             . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=10000000&buffer_size=10000000&overrun_nonfatal=1"'
             . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
             . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 -qmin 2 -qmax 10 -trellis 1'
-            . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ["video_bitrate"] . 'k '
+            . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  $new["video_bitrate"] . 'k '
             . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
             . ' -metadata service_provider="ShreeBhattJI" ';
         if ($new["service_name"] !== "") {
@@ -213,7 +213,7 @@ function all_service_start()
             . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=10000000&buffer_size=10000000&overrun_nonfatal=1"'
             . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
             . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 -qmin 2 -qmax 10 -trellis 1'
-            . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ["video_bitrate"] . 'k '
+            . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  $new["video_bitrate"] . 'k '
             . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
             . ' -metadata service_provider="ShreeBhattJI" ';
         if ($new["service_name"] !== "") {
@@ -307,7 +307,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=10000000&buffer_size=10000000&overrun_nonfatal=1"'
                 . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
                 . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 -qmin 2 -qmax 10 -trellis 1'
-                . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ["video_bitrate"] . 'k '
+                . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  $new["video_bitrate"] . 'k '
                 . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
                 . ' -metadata service_provider="ShreeBhattJI" ';
             if ($new["service_name"] !== "") {
@@ -375,7 +375,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=10000000&buffer_size=10000000&overrun_nonfatal=1"'
                         . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
                         . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 10 -bf 0 -qmin 2 -qmax 10 -trellis 1'
-                        . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ["video_bitrate"] . 'k '
+                        . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  $new["video_bitrate"] . 'k '
                         . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1:first_pts=0" '
                         . ' -metadata service_provider="ShreeBhattJI" ';
                     if ($new["service_name"] !== "") {
