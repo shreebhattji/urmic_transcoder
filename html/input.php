@@ -157,7 +157,7 @@ function all_service_update()
         $ffmpeg = 'numactl --cpunodebind=' . $node
             . ' --membind=' . $node
             . ' taskset -c ' . $core
-            . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 65536 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
+            . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 8192 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
             . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=100000000&buffer_size=100000000&overrun_nonfatal=1"'
             . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
             . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 12 -bf 0 -qmin 2 -qmax 18 -trellis 1'
@@ -208,7 +208,7 @@ function all_service_start()
         $ffmpeg = 'numactl --cpunodebind=' . $node
             . ' --membind=' . $node
             . ' taskset -c ' . $core
-            . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 65536 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
+            . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 8192 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
             . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=100000000&buffer_size=100000000&overrun_nonfatal=1"'
             . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
             . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 12 -bf 0 -qmin 2 -qmax 18 -trellis 1'
@@ -302,7 +302,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $ffmpeg = 'numactl --cpunodebind=' . $node
                 . ' --membind=' . $node
                 . ' taskset -c ' . $core
-                . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 65536 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
+                . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 8192 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
                 . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=100000000&buffer_size=100000000&overrun_nonfatal=1"'
                 . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
                 . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 12 -bf 0 -qmin 2 -qmax 18 -trellis 1'
@@ -370,7 +370,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $ffmpeg = 'numactl --cpunodebind=' . $node
                         . ' --membind=' . $node
                         . ' taskset -c ' . $core
-                        . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 65536 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
+                        . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 8192 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
                         . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=100000000&buffer_size=100000000&overrun_nonfatal=1"'
                         . ' -vf "yadif=mode=0:deint=0,scale=' . $new["resolution"] . ',format=yuv420p" '
                         . ' -c:v ' . $new["video_format"] . ' -flags -ildct-ilme -threads 1 -g 12 -bf 0 -qmin 2 -qmax 18 -trellis 1'
