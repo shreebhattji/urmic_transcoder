@@ -156,7 +156,7 @@ function all_service_update()
         $node = (int)$alloc["node"];
 
         $ffmpeg = 'numactl --cpunodebind=' . $node
-            . ' --membind=' . $node
+            . ' --preferred=' . $node
             . ' taskset -c ' . $core
             . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
             . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=5000000&buffer_size=5000000&overrun_nonfatal=1"'
@@ -207,7 +207,7 @@ function all_service_start()
         $node = (int)$alloc["node"];
         $new["service"] = "enable";
         $ffmpeg = 'numactl --cpunodebind=' . $node
-            . ' --membind=' . $node
+            . ' --preferred=' . $node
             . ' taskset -c ' . $core
             . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
             . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=5000000&buffer_size=5000000&overrun_nonfatal=1"'
@@ -301,7 +301,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $node = (int)$alloc["node"];
 
             $ffmpeg = 'numactl --cpunodebind=' . $node
-                . ' --membind=' . $node
+                . ' --preferred=' . $node
                 . ' taskset -c ' . $core
                 . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
                 . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=5000000&buffer_size=5000000&overrun_nonfatal=1"'
@@ -369,7 +369,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $core = (int)$alloc["cpu"];
                     $node = (int)$alloc["node"];
                     $ffmpeg = 'numactl --cpunodebind=' . $node
-                        . ' --membind=' . $node
+                        . ' --preferred=' . $node
                         . ' taskset -c ' . $core
                         . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
                         . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=5000000&buffer_size=5000000&overrun_nonfatal=1"'
@@ -504,10 +504,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <input type="hidden" name="action" id="bulkAction">
             <table>
                 <tr>
-                    <th>
-                        <input type="checkbox" onclick="toggleAll(this)">No
-                    </th>
-                    <th>ID</th>
+                    <th>No</th>
+                    <th><input type="checkbox" onclick="toggleAll(this)">ID</th>
                     <th>Service Name</th>
                     <th>Input</th>
                     <th>Output</th>
@@ -528,7 +526,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             <input type="checkbox"
                                 class="rowCheckbox"
                                 name="ids[]"
-                                value="<?= $row['id'] ?>">
+                                value="<?= $row['id'] ?>"><?= $row['id'] ?>
                         </td>
                         <td><?= $row["service_name"] ?></td>
                         <td><?= $row["input_udp"] ?></td>
