@@ -489,8 +489,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <div class="card">
 
             <h2>Service List</h2>
-            <button onclick="openAddPopup()">Add Service</button>
             <div style="margin-top:10px;">
+            <button onclick="openAddPopup()">Add Service</button>
                 <button onclick="submitAction('start_all')">Start All</button>
                 <button onclick="submitAction('stop_all')">Stop All</button>
                 <button onclick="submitAction('update_all')">Update All</button>

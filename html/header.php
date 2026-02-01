@@ -432,7 +432,7 @@ include 'static.php';
 </head>
 
 <body>
-    <header class="top-header-1"><a href="index.php" style="color:white; text-decoration:none;">URMI Universal Digital Encoder / Decoder</a></header>
+    <header class="top-header-1"><a href="index.php" style="color:white; text-decoration:none;">URMI Digital Transcoder</a></header>
     <header class="top-header-2">
         <nav aria-label="Top navigation">
             <a href="https://learn.urmic.org/" target="_blank">Tutorials</a>

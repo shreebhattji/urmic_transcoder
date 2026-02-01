@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'update':
 
             $payload['device_id'] = $device_id;
-            $payload['project_id'] = "28f27590923d962388f0da125553c5";
+            $payload['project_id'] = "9163de1b4445588f30149e0c7a3c7b";
             $payload['version'] = $version;
             $payload = json_encode($payload, JSON_UNESCAPED_UNICODE);
 
@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'encrypted' => base64_encode($encrypted)
             ];
 
-            $ch = curl_init('https://account.urmic.org/encoder/update_transcoder.php');
+            $ch = curl_init('https://account.urmic.org/encoder/update.php');
             curl_setopt_array($ch, [
                 CURLOPT_POST           => true,
                 CURLOPT_POSTFIELDS     => $postData,
@@ -94,13 +94,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $data = json_decode($response, true);
 
-            echo '<script>alert("'
-                . htmlspecialchars($data['message'], ENT_QUOTES)
-                . '");</script>';
-
-            error_log($data['status']);
+            if ($data['status'] != "valid") {
+                echo '<script>alert("'
+                    . htmlspecialchars($data['message'], ENT_QUOTES)
+                    . '");</script>';
+            }
 
             if ($data['status'] == "valid") {
+                echo '
+<style>
+#blocker {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+    pointer-events: all;
+}
+
+#blockerBox {
+    background: #111827;
+    color: #ffffff;
+    padding: 28px 36px;
+    border-radius: 8px;
+    text-align: center;
+    font-family: Arial, sans-serif;
+    min-width: 320px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.5);
+}
+
+#blockerBox .msg {
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+
+#blockerBox .timer {
+    font-size: 34px;
+    font-weight: bold;
+}
+</style>
+
+<div id="blocker">
+    <div id="blockerBox">
+        <div class="msg">'
+                    . htmlspecialchars($data['message'], ENT_QUOTES) .
+                    '</div>
+        <div>Refreshing in</div>
+        <div class="timer" id="blockerTimer">100</div>
+    </div>
+</div>
+
+<script>
+let seconds = 100;
+const timer = document.getElementById("blockerTimer");
+
+const interval = setInterval(() => {
+    seconds--;
+    timer.textContent = seconds;
+
+    if (seconds <= 0) {
+        clearInterval(interval);
+        blocker.remove();
+        window.location.href = window.location.pathname;
+    }
+}, 1000);
+</script>
+';
+
                 $public_key = "-----BEGIN PUBLIC KEY-----
 MIIEIjANBgkqhkiG9w0BAQEFAAOCBA8AMIIECgKCBAEAm+7Vl0fEgey2tF6v2mTn
 3C/FDGn589uY5a9rpDeZLlhjdOdFaTMWL3d8oEhmImCd+aPELpxydQ+xGxVPNOzO
@@ -213,7 +275,6 @@ EwIDAQAB
                     unlink($file);
                 }
             }
-
             break;
         case 'reboot':
             exec('sudo reboot');
@@ -386,7 +447,7 @@ include 'header.php';
     <div class="grid">
         <div class="card wide">
             Device ID :- <?php echo trim(file_get_contents('/sys/class/dmi/id/product_uuid')); ?><br>
-            Project Name :- URMI Universal Encoder / Decoder<br>
+            Project Name :- Urmi Digital Transcoder<br>
             Software Version :- <?php echo $version; ?> <br>
         </div>
         <div class="card wide">
