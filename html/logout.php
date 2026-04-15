@@ -1,4 +1,14 @@
 <?php
+
+/*
+Urmi you happy me happy licence
+
+Copyright (c) 2026 shreebhattji
+
+License text:
+https://github.com/shreebhattji/Urmi/blob/main/licence.md
+*/
+
 session_start();
 
 $_SESSION = [];

@@ -1,10 +1,17 @@
 <?php include 'header.php'; ?>
+/*
+Urmi you happy me happy licence
 
+Copyright (c) 2026 shreebhattji
+
+License text:
+https://github.com/shreebhattji/Urmi/blob/main/licence.md
+*/
 <div class="containerindex">
     <div class="grid">
         <div class="card wide">
             <h3>ShreeBhattJi</h3>
-            <p>If you’ve ever read the Panchatantra, a few stories begin like this: “Once upon a time, there lived a poor Brahmin in a village.” In this story, that Brahmin is me — ShreeBhattJi, also known as Devdatt Bhatt, the King of Automation and Remote Control from the land of great beginnings, Bhavnagar.
+            <p>If you ever read the Panchatantra, a few stories begin like this: “Once upon a time, there lived a poor Brahmin in a village.” In this story, that Brahmin is me — ShreeBhattJi, also known as Devdatt Bhatt, the King of Automation and Remote Control from the land of great beginnings, Bhavnagar.
             <p>I am here to help provide a great viewing experience for users, generate strong commissions for LCOs, MSOs, and ISPs, and create substantial revenue for content owners while contributing fair taxes to the government. I have reason to believe that by upgrading a few devices at the transmission point, both streaming operations and customer viewing experiences can be improved exponentially.
             <p>We are proud to present Universal Digital Encoder Decoder as all format to all format encoder cum decoder for dedicated hardware , virtual machines and proxmox lxc images .
             <p><a href="https://urmic.org/trusted-partners/" target="_blank"><button class="red-btn">Meet Our Partners</button></a>

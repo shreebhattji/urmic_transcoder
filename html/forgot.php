@@ -1,4 +1,14 @@
 <?php
+
+/*
+Urmi you happy me happy licence
+
+Copyright (c) 2026 shreebhattji
+
+License text:
+https://github.com/shreebhattji/Urmi/blob/main/licence.md
+*/
+
 declare(strict_types=1);
 
 session_start();
@@ -9,10 +19,12 @@ $clientIp  = $_SERVER['REMOTE_ADDR'] ?? '';
 $usersFile = '/var/www/users.json';
 
 /* ---------- helpers ---------- */
-function load_json(string $file): array {
+function load_json(string $file): array
+{
     return is_file($file) ? json_decode(file_get_contents($file), true) ?: [] : [];
 }
-function save_json(string $file, array $data): void {
+function save_json(string $file, array $data): void
+{
     file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT), LOCK_EX);
 }
 
@@ -56,10 +68,11 @@ if ($clientIp === $ALLOWED_IP && $_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>URMIC powred by Shreebhattji</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>URMIC powred by Shreebhattji</title>
 
     <style>
         * {
@@ -115,11 +128,9 @@ if ($clientIp === $ALLOWED_IP && $_SERVER['REQUEST_METHOD'] === 'POST') {
             position: absolute;
             width: 2px;
             height: 70px;
-            background: linear-gradient(
-                to bottom,
-                rgba(255, 255, 255, 0.9),
-                rgba(255, 255, 255, 0)
-            );
+            background: linear-gradient(to bottom,
+                    rgba(255, 255, 255, 0.9),
+                    rgba(255, 255, 255, 0));
             opacity: 0.55;
             border-radius: 999px;
             filter: blur(0.3px);
@@ -133,6 +144,7 @@ if ($clientIp === $ALLOWED_IP && $_SERVER['REQUEST_METHOD'] === 'POST') {
             0% {
                 transform: translate3d(0, -120px, 0);
             }
+
             100% {
                 transform: translate3d(0, 110vh, 0);
             }
@@ -146,12 +158,9 @@ if ($clientIp === $ALLOWED_IP && $_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 2.5rem 2rem;
             border-radius: 1.75rem;
             border: 1px solid rgba(148, 163, 184, 0.6);
-            background: linear-gradient(
-                    135deg,
+            background: linear-gradient(135deg,
                     rgba(15, 23, 42, 0.9),
-                    rgba(15, 23, 42, 0.7)
-                )
-                border-box;
+                    rgba(15, 23, 42, 0.7)) border-box;
             backdrop-filter: blur(16px);
             box-shadow:
                 0 20px 60px rgba(15, 23, 42, 0.7),
@@ -171,11 +180,9 @@ if ($clientIp === $ALLOWED_IP && $_SERVER['REQUEST_METHOD'] === 'POST') {
             text-transform: uppercase;
             letter-spacing: 0.12em;
             color: var(--text-main);
-            background: linear-gradient(
-                90deg,
-                rgba(59, 130, 246, 0.6),
-                rgba(34, 197, 94, 0.75)
-            );
+            background: linear-gradient(90deg,
+                    rgba(59, 130, 246, 0.6),
+                    rgba(34, 197, 94, 0.75));
         }
 
         .badge-dot {
@@ -192,12 +199,10 @@ if ($clientIp === $ALLOWED_IP && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
         h1 span.highlight {
             font-size: clamp(1.1rem, 2vw, 1.8rem);
-            background-image: linear-gradient(
-                120deg,
-                #22c55e,
-                #a855f7,
-                #f97316
-            );
+            background-image: linear-gradient(120deg,
+                    #22c55e,
+                    #a855f7,
+                    #f97316);
             background-clip: text;
             -webkit-background-clip: text;
             color: transparent;
@@ -229,11 +234,9 @@ if ($clientIp === $ALLOWED_IP && $_SERVER['REQUEST_METHOD'] === 'POST') {
             border: 1px solid rgba(148, 163, 184, 0.8);
             font-size: 0.75rem;
             color: #e5e7eb;
-            background: radial-gradient(
-                circle at top left,
-                rgba(59, 130, 246, 0.22),
-                rgba(15, 23, 42, 0.7)
-            );
+            background: radial-gradient(circle at top left,
+                    rgba(59, 130, 246, 0.22),
+                    rgba(15, 23, 42, 0.7));
         }
 
         .footer {
@@ -291,118 +294,116 @@ if ($clientIp === $ALLOWED_IP && $_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 
 <body>
-<div class="rain-container" id="rain"></div>
+    <div class="rain-container" id="rain"></div>
 
-<div class="page-wrap">
-<main class="card">
+    <div class="page-wrap">
+        <main class="card">
 
-<div class="badge">
-    <span class="badge-dot"></span>
-    <span>Password Recovery</span>
-</div>
+            <div class="badge">
+                <span class="badge-dot"></span>
+                <span>Password Recovery</span>
+            </div>
 
-<h1>
-    Universal Encoder / Decoder
-    <span class="highlight">powred by Shreebhattji</span>
-</h1>
+            <h1>
+                Universal Encoder / Decoder
+                <span class="highlight">powred by Shreebhattji</span>
+            </h1>
 
-<?php if ($clientIp !== $ALLOWED_IP): ?>
+            <?php if ($clientIp !== $ALLOWED_IP): ?>
 
-<p class="subtitle">
-    Set you computer ip to <strong>172.16.111.112</strong> then
-    Connect USB dongle to encoder and visit
-    <strong>172.16.111.111</strong> for password reset
-    
-</p>
+                <p class="subtitle">
+                    Set you computer ip to <strong>172.16.111.112</strong> then
+                    Connect USB dongle to encoder and visit
+                    <strong>172.16.111.111</strong> for password reset
 
-<?php else: ?>
+                </p>
 
-<?php if ($error): ?>
-<p style="color:#fca5a5"><?= htmlspecialchars($error) ?></p>
-<?php endif; ?>
+            <?php else: ?>
 
-<?php if ($success): ?>
-<p style="color:#86efac"><?= htmlspecialchars($success) ?></p>
-<?php endif; ?>
+                <?php if ($error): ?>
+                    <p style="color:#fca5a5"><?= htmlspecialchars($error) ?></p>
+                <?php endif; ?>
 
-<form method="post" autocomplete="off" style="display:flex;flex-direction:column;gap:0.75rem">
+                <?php if ($success): ?>
+                    <p style="color:#86efac"><?= htmlspecialchars($success) ?></p>
+                <?php endif; ?>
 
-<input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
+                <form method="post" autocomplete="off" style="display:flex;flex-direction:column;gap:0.75rem">
 
-<input
-    type="text"
-    name="username"
-    placeholder="New Username"
-    required
-    style="padding:0.7rem;border-radius:0.5rem;border:none"
-/>
+                    <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
 
-<input
-    type="password"
-    name="password"
-    placeholder="New Password"
-    required
-    style="padding:0.7rem;border-radius:0.5rem;border:none"
-/>
+                    <input
+                        type="text"
+                        name="username"
+                        placeholder="New Username"
+                        required
+                        style="padding:0.7rem;border-radius:0.5rem;border:none" />
 
-<input
-    type="password"
-    name="confirm"
-    placeholder="Confirm Password"
-    required
-    style="padding:0.7rem;border-radius:0.5rem;border:none"
-/>
+                    <input
+                        type="password"
+                        name="password"
+                        placeholder="New Password"
+                        required
+                        style="padding:0.7rem;border-radius:0.5rem;border:none" />
 
-<button
-    type="submit"
-    style="padding:0.75rem;border-radius:0.6rem;border:none;
+                    <input
+                        type="password"
+                        name="confirm"
+                        placeholder="Confirm Password"
+                        required
+                        style="padding:0.7rem;border-radius:0.5rem;border:none" />
+
+                    <button
+                        type="submit"
+                        style="padding:0.75rem;border-radius:0.6rem;border:none;
            background:#22c55e;color:#000;font-weight:600">
-    Reset Credentials
-</button>
+                        Reset Credentials
+                    </button>
 
-</form>
+                </form>
 
-<?php endif; ?>
+            <?php endif; ?>
 
-</main>
-</div>
+        </main>
+    </div>
 
-<!-- ===== YOUR RAIN SCRIPT (UNCHANGED) ===== -->
-<script>
-(function () {
-    const container = document.getElementById("rain");
+    <!-- ===== YOUR RAIN SCRIPT (UNCHANGED) ===== -->
+    <script>
+        (function() {
+            const container = document.getElementById("rain");
 
-    function generateRain() {
-        if (!container) return;
-        container.innerHTML = "";
+            function generateRain() {
+                if (!container) return;
+                container.innerHTML = "";
 
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        let drops = Math.floor(width * 0.16);
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                let drops = Math.floor(width * 0.16);
 
-        if (window.innerWidth < 600) drops = Math.floor(width * 0.10);
-        else if (window.innerWidth > 1400) drops = Math.floor(width * 0.18);
+                if (window.innerWidth < 600) drops = Math.floor(width * 0.10);
+                else if (window.innerWidth > 1400) drops = Math.floor(width * 0.18);
 
-        for (let i = 0; i < drops; i++) {
-            const drop = document.createElement("span");
-            drop.className = "raindrop";
-            drop.style.left = Math.random() * 100 + "vw";
-            drop.style.top = -120 - Math.random() * height * 0.3 + "px";
-            drop.style.animationDuration = (0.7 + Math.random() * 1.2) + "s";
-            drop.style.animationDelay = (Math.random() * -3) + "s";
-            drop.style.opacity = (0.35 + Math.random() * 0.55).toFixed(2);
-            container.appendChild(drop);
-        }
-    }
+                for (let i = 0; i < drops; i++) {
+                    const drop = document.createElement("span");
+                    drop.className = "raindrop";
+                    drop.style.left = Math.random() * 100 + "vw";
+                    drop.style.top = -120 - Math.random() * height * 0.3 + "px";
+                    drop.style.animationDuration = (0.7 + Math.random() * 1.2) + "s";
+                    drop.style.animationDelay = (Math.random() * -3) + "s";
+                    drop.style.opacity = (0.35 + Math.random() * 0.55).toFixed(2);
+                    container.appendChild(drop);
+                }
+            }
 
-    let resizeTimer;
-    window.addEventListener("resize", () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(generateRain, 180);
-    });
+            let resizeTimer;
+            window.addEventListener("resize", () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(generateRain, 180);
+            });
 
-    window.addEventListener("DOMContentLoaded", generateRain);
-})();
-</script>
+            window.addEventListener("DOMContentLoaded", generateRain);
+        })();
+    </script>
 </body>
+
 </html>

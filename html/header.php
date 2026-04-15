@@ -1,4 +1,14 @@
-<?php 
+<?php
+
+/*
+Urmi you happy me happy licence
+
+Copyright (c) 2026 shreebhattji
+
+License text:
+https://github.com/shreebhattji/Urmi/blob/main/licence.md
+*/
+
 require 'require_login.php';
 include 'static.php';
 ?>
@@ -409,12 +419,14 @@ include 'static.php';
         .form-center {
             text-align: center;
         }
+
         .social-row {
             display: flex;
             gap: 12px;
             align-items: center;
             padding: 8px;
         }
+
         .social-btn {
             width: 67px;
             height: 67px;
@@ -425,9 +437,26 @@ include 'static.php';
             text-decoration: none;
             transition: transform .12s, box-shadow .12s;
         }
-        .social-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,.08); }
-        .social-btn svg { width: 22px; height: 22px; display: block; }
-        .sr-only { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+
+        .social-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, .08);
+        }
+
+        .social-btn svg {
+            width: 22px;
+            height: 22px;
+            display: block;
+        }
+
+        .sr-only {
+            position: absolute;
+            left: -10000px;
+            top: auto;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
     </style>
 </head>
 

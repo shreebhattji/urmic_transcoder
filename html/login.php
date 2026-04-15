@@ -1,9 +1,19 @@
 <?php
+
+/*
+Urmi you happy me happy licence
+
+Copyright (c) 2026 shreebhattji
+
+License text:
+https://github.com/shreebhattji/Urmi/blob/main/licence.md
+*/
+
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
 session_start();
-    
+
 if (!empty($_SESSION['user'])) {
     header('Location: /index.php', true, 302);
     exit;

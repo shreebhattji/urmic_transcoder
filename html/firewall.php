@@ -1,4 +1,14 @@
-<?php include 'header.php' ?>
+<?php
+
+/*
+Urmi you happy me happy licence
+
+Copyright (c) 2026 shreebhattji
+
+License text:
+https://github.com/shreebhattji/Urmi/blob/main/licence.md
+*/
+include 'header.php' ?>
 <?php
 
 $jsonFile = __DIR__ . '/firewall.json';
@@ -44,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         if (count($tmp) > 0) {
             foreach ($tmp as $ip) {
-                exec("sudo ufw allow from " . $ip." to any port " . $port . " proto tcp");
+                exec("sudo ufw allow from " . $ip . " to any port " . $port . " proto tcp");
             }
         } else {
             exec("sudo ufw allow " . $port);

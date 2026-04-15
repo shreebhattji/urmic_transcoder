@@ -1,4 +1,13 @@
-<?php include 'header.php'; ?>
+<?php
+/*
+Urmi you happy me happy licence
+
+Copyright (c) 2026 shreebhattji
+
+License text:
+https://github.com/shreebhattji/Urmi/blob/main/licence.md
+*/
+include 'header.php'; ?>
 <?php
 
 $domain = "";
@@ -67,7 +76,7 @@ if ($service_rtmp1_multiple == 'enable') {
     $text .= "</h5>";
 }
 
-if($service_srt_multiple){
+if ($service_srt_multiple) {
     $text .= "<h5>srt://" . $domain . ":1937?streamid=shree/bhatt/ji</h5><br><br>";
 }
 

@@ -1,5 +1,14 @@
 <?php
 
+/*
+Urmi you happy me happy licence
+
+Copyright (c) 2026 shreebhattji
+
+License text:
+https://github.com/shreebhattji/Urmi/blob/main/licence.md
+*/
+
 function generateRandomString($length = 16)
 {
     $bytes = random_bytes(ceil($length / 2));
@@ -287,4 +296,3 @@ function netplan_yaml(array $data, int $indent = 0): string
 
     return $out;
 }
-

@@ -1,5 +1,12 @@
 <?php
+/*
+Urmi you happy me happy licence
 
+Copyright (c) 2026 shreebhattji
+
+License text:
+https://github.com/shreebhattji/Urmi/blob/main/licence.md
+*/
 exec("sudo chmod 444 /sys/class/dmi/id/product_uuid");
 $version = 1;
 
