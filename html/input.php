@@ -168,9 +168,9 @@ function all_service_update()
             . ' --preferred=' . $node
             . ' taskset -c ' . $core
             . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
-            . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=50000&buffer_size=50000&overrun_nonfatal=1"'
+            . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000"'
             . ' -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
-            . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 5 '
+            . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 8 '
             . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ($new["video_bitrate"] + 500) . 'k '
             . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
             . ' -metadata service_provider="ShreeBhattJI" ';
@@ -219,9 +219,9 @@ function all_service_start()
             . ' --preferred=' . $node
             . ' taskset -c ' . $core
             . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
-            . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=50000&buffer_size=50000&overrun_nonfatal=1"'
+            . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000"'
             . ' -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
-            . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 5 '
+            . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 8 '
             . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ($new["video_bitrate"] + 500) . 'k '
             . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
             . ' -metadata service_provider="ShreeBhattJI" ';
@@ -313,9 +313,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 . ' --preferred=' . $node
                 . ' taskset -c ' . $core
                 . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
-                . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=50000&buffer_size=50000&overrun_nonfatal=1"'
+                . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000"'
                 . ' -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
-                . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 5 '
+                . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 8 '
                 . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ($new["video_bitrate"] + 500) . 'k '
                 . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
                 . ' -metadata service_provider="ShreeBhattJI" ';
@@ -381,9 +381,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         . ' --preferred=' . $node
                         . ' taskset -c ' . $core
                         . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
-                        . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=50000&buffer_size=50000&overrun_nonfatal=1"'
+                        . ' -i "udp://@' . $new["input_udp"] . '?fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000"'
                         . ' -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
-                        . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 5 '
+                        . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 8 '
                         . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ($new["video_bitrate"] + 500) . 'k '
                         . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
                         . ' -metadata service_provider="ShreeBhattJI" ';
