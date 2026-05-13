@@ -177,7 +177,7 @@ function all_service_update()
         if ($new["service_name"] !== "") {
             $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
         }
-        $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
+        $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1&localaddr=10.10.10.11"';
 
         file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
 
@@ -228,7 +228,7 @@ function all_service_start()
         if ($new["service_name"] !== "") {
             $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
         }
-        $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
+        $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1&localaddr=10.10.10.11"';
 
         file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
 
@@ -322,7 +322,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if ($new["service_name"] !== "") {
                 $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
             }
-            $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
+            $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1&localaddr=10.10.10.11"';
 
             file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
 
@@ -390,7 +390,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     if ($new["service_name"] !== "") {
                         $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
                     }
-                    $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1"';
+                    $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1&localaddr=10.10.10.11"';
 
                     file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
 
