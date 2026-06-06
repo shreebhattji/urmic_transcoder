@@ -23,7 +23,7 @@ include 'static.php';
     <title>ShreeBhattJi - URMI Digital Transcoder</title>
     <script src="chart.js"></script>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="all.min.css" id="local-fa-css" style="display:none;">
+    <link rel="stylesheet" href="all.min.css">
 </head>
 
 <body>
@@ -34,7 +34,7 @@ include 'static.php';
     </header>
     <header class="top-header-2">
         <nav aria-label="Top navigation">
-            <a href="https://learn.urmic.org/" target="_blank"><i class="fas fa-graduation-cap"></i> Tutorials</a>
+            <a href="about_us.php"><i class="fas fa-graduation-cap"></i> Tutorials</a>
             <a href="about_us.php"><i class="fas fa-info-circle"></i> About Us</a>
             <a href="contact_us.php"><i class="fas fa-envelope"></i> Contact Us</a>
             <a href="premium_service.php"><i class="fas fa-crown"></i> Premium Service</a>
@@ -51,20 +51,6 @@ include 'static.php';
             <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </nav>
     </header>
+</body>
 
-    <script>
-        // Fallback mechanism for Font Awesome
-        document.addEventListener('DOMContentLoaded', function() {
-            const cdnLink = document.querySelector('link[href*="font-awesome"]');
-            const localLink = document.getElementById('local-fa-css');
-            
-            // Check if CDN failed to load
-            cdnLink.addEventListener('error', function() {
-                // Switch to local CSS if CDN fails
-                if (localLink) {
-                    localLink.style.display = 'block';
-                    cdnLink.disabled = true;
-                }
-            });
-        });
-    </script>
+</html>
