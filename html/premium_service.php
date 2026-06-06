@@ -39,7 +39,9 @@ include 'header.php';
                 </div>
             </div>
         </section>
-
+<br>
+<br>
+<br>
         <div class="grid">
             <!-- Shared Streaming -->
             <div class="card">
@@ -49,7 +51,7 @@ include 'header.php';
                         <div class="price">₹2,000 / month</div>
                     </div>
                     <div style="margin-left:auto;text-align:right">
-                        <div class="pill">Best for small producers</div>
+                        <div class="pill pill-highlight">Best for small producers</div>
                     </div>
                 </div>
 
