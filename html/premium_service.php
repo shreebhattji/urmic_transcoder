@@ -45,12 +45,12 @@ include 'header.php';
         <div class="grid">
             <!-- Shared Streaming -->
             <div class="card">
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+                <div class="card-header">
                     <div>
                         <div class="muted">Shared Streaming</div>
                         <div class="price">₹2,000 / month</div>
                     </div>
-                    <div style="margin-left:auto;text-align:right">
+                    <div class="card-header-pill">
                         <div class="pill pill-highlight">Best for small producers</div>
                     </div>
                 </div>
@@ -97,12 +97,12 @@ include 'header.php';
 
             <!-- Dedicated Streaming -->
             <div class="card">
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+                <div class="card-header">
                     <div>
                         <div class="muted">Dedicated Streaming</div>
                         <div class="price">₹4,000 / month</div>
                     </div>
-                    <div style="margin-left:auto;text-align:right">
+                    <div class="card-header-pill">
                         <div class="pill">Recommended for events & scale</div>
                     </div>
                 </div>
