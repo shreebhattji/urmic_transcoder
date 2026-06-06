@@ -1,3 +1,4 @@
+<!-- index.php -->
 <?php
 
 /*
@@ -14,27 +15,27 @@ include 'header.php'; ?>
 <div class="containerindex">
   <div class="grid">
     <div class="card">
-      <h3>CPU (%)</h3>
+      <h3><i class="fas fa-microchip"></i> CPU (%)</h3>
       <div class="chart-wrap"><canvas id="cpuChart"></canvas></div>
     </div>
     <div class="card">
-      <h3>RAM (%)</h3>
+      <h3><i class="fas fa-memory"></i> RAM (%)</h3>
       <div class="chart-wrap"><canvas id="ramChart"></canvas></div>
     </div>
     <div class="card wide">
-      <h3>Network (KB/s)</h3>
+      <h3><i class="fas fa-network-wired"></i> Network (KB/s)</h3>
       <div class="chart-wrap"><canvas id="netChart"></canvas></div>
     </div>
     <div class="card wide">
-      <h3>Disk I/O (KB/s) & Disk %</h3>
+      <h3><i class="fas fa-hdd"></i> Disk I/O (KB/s) & Disk %</h3>
       <div class="chart-wrap"><canvas id="diskChart"></canvas></div>
     </div>
   </div>
 
-  <div style="margin-top:12px; color:#9fb2d6; display:flex; justify-content:space-between;">
-    <div>Last update: <span id="lastUpdate">—</span></div>
-    <div>CPU: <span id="lastCpu">—</span>% · RAM: <span id="lastRam">—</span>% · In: <span id="lastIn">—</span>KB/s ·
-      Out: <span id="lastOut">—</span>KB/s</div>
+  <div style="margin-top:12px; color:#a9c7ff; display:flex; justify-content:space-between; font-size:14px;">
+    <div>Last update: <span id="lastUpdate" class="pulse">—</span></div>
+    <div>CPU: <span id="lastCpu" class="pulse">—</span>% · RAM: <span id="lastRam" class="pulse">—</span>% · In: <span id="lastIn" class="pulse">—</span>KB/s ·
+      Out: <span id="lastOut" class="pulse">—</span>KB/s</div>
   </div>
   <br>
   <br>
@@ -57,7 +58,11 @@ include 'header.php'; ?>
         label: 'CPU %',
         data: [],
         fill: false,
-        tension: 0.2
+        borderColor: '#00a8ff',
+        backgroundColor: 'rgba(0, 168, 255, 0.1)',
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 6
       }]
     },
     options: {
@@ -66,11 +71,33 @@ include 'header.php'; ?>
       scales: {
         y: {
           min: 0,
-          max: 100
+          max: 100,
+          grid: {
+            color: 'rgba(92, 158, 255, 0.1)'
+          },
+          ticks: {
+            color: '#a9c7ff'
+          }
+        },
+        x: {
+          grid: {
+            color: 'rgba(92, 158, 255, 0.1)'
+          },
+          ticks: {
+            color: '#a9c7ff'
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: {
+            color: '#a9c7ff'
+          }
         }
       }
     }
   });
+  
   const ramChart = new Chart(document.getElementById('ramChart').getContext('2d'), {
     type: 'line',
     data: {
@@ -79,7 +106,11 @@ include 'header.php'; ?>
         label: 'RAM %',
         data: [],
         fill: false,
-        tension: 0.2
+        borderColor: '#00b8ff',
+        backgroundColor: 'rgba(0, 184, 255, 0.1)',
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 6
       }]
     },
     options: {
@@ -88,11 +119,33 @@ include 'header.php'; ?>
       scales: {
         y: {
           min: 0,
-          max: 100
+          max: 100,
+          grid: {
+            color: 'rgba(92, 158, 255, 0.1)'
+          },
+          ticks: {
+            color: '#a9c7ff'
+          }
+        },
+        x: {
+          grid: {
+            color: 'rgba(92, 158, 255, 0.1)'
+          },
+          ticks: {
+            color: '#a9c7ff'
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: {
+            color: '#a9c7ff'
+          }
         }
       }
     }
   });
+  
   const netChart = new Chart(document.getElementById('netChart').getContext('2d'), {
     type: 'line',
     data: {
@@ -101,13 +154,21 @@ include 'header.php'; ?>
           label: 'Net In (KB/s)',
           data: [],
           fill: false,
-          tension: 0.2
+          borderColor: '#00a8ff',
+          backgroundColor: 'rgba(0, 168, 255, 0.1)',
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 6
         },
         {
           label: 'Net Out (KB/s)',
           data: [],
           fill: false,
-          tension: 0.2
+          borderColor: '#00b8ff',
+          backgroundColor: 'rgba(0, 184, 255, 0.1)',
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 6
         }
       ]
     },
@@ -116,11 +177,33 @@ include 'header.php'; ?>
       maintainAspectRatio: false,
       scales: {
         y: {
-          beginAtZero: true
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(92, 158, 255, 0.1)'
+          },
+          ticks: {
+            color: '#a9c7ff'
+          }
+        },
+        x: {
+          grid: {
+            color: 'rgba(92, 158, 255, 0.1)'
+          },
+          ticks: {
+            color: '#a9c7ff'
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: {
+            color: '#a9c7ff'
+          }
         }
       }
     }
   });
+  
   const diskChart = new Chart(document.getElementById('diskChart').getContext('2d'), {
     type: 'line',
     data: {
@@ -129,20 +212,32 @@ include 'header.php'; ?>
           label: 'Disk Read (KB/s)',
           data: [],
           fill: false,
-          tension: 0.2
+          borderColor: '#00a8ff',
+          backgroundColor: 'rgba(0, 168, 255, 0.1)',
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 6
         },
         {
           label: 'Disk Write (KB/s)',
           data: [],
           fill: false,
-          tension: 0.2
+          borderColor: '#00b8ff',
+          backgroundColor: 'rgba(0, 184, 255, 0.1)',
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 6
         },
         {
           label: 'Disk %',
           data: [],
           yAxisID: 'percent',
           fill: false,
-          tension: 0.2
+          borderColor: '#00e0ff',
+          backgroundColor: 'rgba(0, 224, 255, 0.1)',
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 6
         }
       ]
     },
@@ -152,7 +247,13 @@ include 'header.php'; ?>
       scales: {
         y: {
           position: 'left',
-          beginAtZero: true
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(92, 158, 255, 0.1)'
+          },
+          ticks: {
+            color: '#a9c7ff'
+          }
         },
         percent: {
           position: 'right',
@@ -162,7 +263,23 @@ include 'header.php'; ?>
             display: false
           },
           ticks: {
+            color: '#a9c7ff',
             callback: v => v + '%'
+          }
+        },
+        x: {
+          grid: {
+            color: 'rgba(92, 158, 255, 0.1)'
+          },
+          ticks: {
+            color: '#a9c7ff'
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: {
+            color: '#a9c7ff'
           }
         }
       }
