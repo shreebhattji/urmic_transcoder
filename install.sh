@@ -1,5 +1,5 @@
 sudo apt update
-sudo apt install -y apache2 php libapache2-mod-php vainfo ufw intel-media-va-driver-non-free libavcodec-extra mesa-utils i965-va-driver libmfx1 intel-gpu-tools ffmpeg v4l-utils python3-pip mpv alsa-utils vlan git zlib1g-dev php-zip php-curl
+sudo apt install -y apache2 php libapache2-mod-php vainfo ufw intel-media-va-driver-non-free libavcodec-extra mesa-utils i965-va-driver libmfx1 intel-gpu-tools ffmpeg v4l-utils python3-pip mpv alsa-utils vlan git zlib1g-dev php-zip php-curl numactl
 sudo pip3 install psutil --break-system-packages
 
 cat > /etc/sudoers.d/www-data << 'EOL'
