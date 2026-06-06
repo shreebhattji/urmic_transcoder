@@ -40,7 +40,7 @@ include 'header.php';
             </div>
         </section>
 
-        <div class="cards">
+        <div class="grid">
             <!-- Shared Streaming -->
             <div class="card">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
