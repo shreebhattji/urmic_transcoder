@@ -1,157 +1,17 @@
 <?php
+include 'header.php';
+?>
 
-/*
-Urmi you happy me happy licence
-
-Copyright (c) 2026 shreebhattji
-
-License text:
-https://github.com/shreebhattji/Urmi/blob/main/licence.md
-*/
-
-include 'header.php'; ?>
-<style>
-    :root {
-        --accent: #0b74de;
-        --muted: #6b7280;
-        --card: #ffffff;
-        --bg: #f3f4f6
-    }
-
-    body {
-        font-family: Inter, system-ui, Arial, Helvetica, sans-serif;
-        background: var(--bg);
-        color: #111;
-        margin: 0;
-        padding: 32px
-    }
-
-    .wrap {
-        max-width: 1100px;
-        margin: 0 auto
-    }
-
-    header {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        margin-bottom: 20px
-    }
-
-    header h1 {
-        margin: 0;
-        font-size: 20px
-    }
-
-    .cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 16px
-    }
-
-    .card {
-        background: var(--card);
-        border-radius: 12px;
-        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
-        padding: 20px
-    }
-
-    .price {
-        font-size: 28px;
-        font-weight: 700;
-        color: var(--accent)
-    }
-
-    .muted {
-        color: var(--muted);
-        font-size: 13px
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 8px
-    }
-
-    th,
-    td {
-        padding: 10px;
-        border-bottom: 1px solid #eef2f6;
-        text-align: left;
-        font-size: 14px
-    }
-
-    th {
-        background: transparent;
-        font-weight: 600
-    }
-
-    .feature {
-        display: flex;
-        align-items: center
-    }
-
-    .pill {
-        display: inline-block;
-        background: #eef6ff;
-        border-radius: 999px;
-        padding: 6px 10px;
-        font-size: 13px;
-        margin-left: auto
-    }
-
-    .cta {
-        display: inline-block;
-        padding: 10px 14px;
-        border-radius: 10px;
-        font-weight: 600;
-        text-decoration: none
-    }
-
-    .cta-primary {
-        background: var(--accent);
-        color: #fff
-    }
-
-    .cta-ghost {
-        border: 1px solid #e6eefa;
-        color: var(--accent)
-    }
-
-    .benefits {
-        margin-top: 18px
-    }
-
-    .note {
-        font-size: 13px;
-        color: #374151;
-        background: #fff;
-        padding: 12px;
-        border-radius: 8px
-    }
-
-    footer {
-        margin-top: 20px;
-        font-size: 13px;
-        color: var(--muted)
-    }
-
-    @media (max-width:600px) {
-        header {
-            flex-direction: column;
-            align-items: flex-start
-        }
-
-        header h1 {
-            margin-bottom: 8px
-        }
-    }
-</style>
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Streaming Services</title>
+    <link rel="stylesheet" href="style.css">
+</head>
 <body>
-
-    <div class="wrap">
-
+    <div class="container">
         <br>
         <br>
         <br>
@@ -299,5 +159,6 @@ include 'header.php'; ?>
             <div class="muted">Need an exportable copy of this pricing page or custom branding? Contact sales for a tailored quote and SLA.</div>
         </footer>
     </div>
+    <?php include 'footer.php'; ?>
 </body>
-<?php include 'footer.php'; ?>
+</html>
