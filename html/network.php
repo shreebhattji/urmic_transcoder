@@ -21,14 +21,14 @@ if (file_exists($config_file)) {
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
-        $interface = $_POST['interface'];
+        $interface = $_POST['interface'] ?? '';
         $action = $_POST['action'];
         
         if ($action === 'save') {
             // Save configuration
             $config = [
                 'interface' => $interface,
-                'method' => $_POST['method'],
+                'method' => $_POST['method'] ?? '',
                 'ip' => $_POST['ip'] ?? '',
                 'netmask' => $_POST['netmask'] ?? '',
                 'gateway' => $_POST['gateway'] ?? '',
@@ -43,6 +43,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'deactivate') {
             // Deactivate interface
             exec("sudo ip link set $interface down", $output, $return_code);
+        } elseif ($action === 'save_general') {
+            // Save general settings
+            $general_config = [
+                'hostname' => $_POST['hostname'] ?? '',
+                'dns_servers' => $_POST['dns_servers'] ?? '',
+                'ntp_servers' => $_POST['ntp_servers'] ?? '',
+                'proxy' => $_POST['proxy'] ?? ''
+            ];
+            
+            $network_config['general'] = $general_config;
+            file_put_contents($config_file, json_encode($network_config, JSON_PRETTY_PRINT));
         }
     }
 }
@@ -103,113 +114,279 @@ foreach ($output as $line) {
         $interface_data[$current_interface]['status'] = 'up';
     }
 }
+
+// Get general settings
+$general_config = $network_config['general'] ?? [
+    'hostname' => '',
+    'dns_servers' => '',
+    'ntp_servers' => '',
+    'proxy' => ''
+];
 ?>
 
 <div class="container">
-    <h2>Network Interfaces</h2>
+    <h2>Network Configuration</h2>
     
-    <!-- Interface Tabs -->
-    <ul class="nav nav-tabs" id="interfaceTabs" role="tablist">
-        <?php $first = true; foreach ($interface_data as $interface): ?>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link <?php echo $first ? 'active' : ''; ?>" 
-                        id="tab-<?php echo $interface['name']; ?>" 
-                        data-bs-toggle="tab" 
-                        data-bs-target="#<?php echo $interface['name']; ?>" 
-                        type="button" 
-                        role="tab">
-                    <?php echo htmlspecialchars($interface['name']); ?>
-                </button>
-            </li>
-        <?php $first = false; endforeach; ?>
+    <!-- General Settings Tabs -->
+    <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
+                General Settings
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="interfaces-tab" data-bs-toggle="tab" data-bs-target="#interfaces" type="button" role="tab">
+                Interfaces
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="dns-tab" data-bs-toggle="tab" data-bs-target="#dns" type="button" role="tab">
+                DNS Settings
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="ntp-tab" data-bs-toggle="tab" data-bs-target="#ntp" type="button" role="tab">
+                NTP Settings
+            </button>
+        </li>
     </ul>
     
     <!-- Tab Content -->
-    <div class="tab-content" id="interfaceTabContent">
-        <?php $first = true; foreach ($interface_data as $interface): ?>
-            <div class="tab-pane fade <?php echo $first ? 'show active' : ''; ?>" 
-                 id="<?php echo $interface['name']; ?>" 
-                 role="tabpanel">
-                <div class="card mt-3">
-                    <div class="card-header">
-                        <h5><?php echo htmlspecialchars($interface['name']); ?></h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <p><strong>IP Address:</strong> <?php echo htmlspecialchars($interface['ip'] ?: 'N/A'); ?></p>
-                                <p><strong>MAC Address:</strong> <?php echo htmlspecialchars($interface['mac'] ?: 'N/A'); ?></p>
-                                <p><strong>Status:</strong> 
-                                    <span class="badge bg-<?php echo $interface['status'] === 'up' ? 'success' : 'secondary'; ?>">
-                                        <?php echo htmlspecialchars($interface['status']); ?>
-                                    </span>
-                                </p>
-                            </div>
-                            <div class="col-md-6">
-                                <form method="post" action="">
-                                    <input type="hidden" name="interface" value="<?php echo htmlspecialchars($interface['name']); ?>">
-                                    
-                                    <div class="mb-3">
-                                        <label class="form-label">Configuration Method</label>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="method" id="dhcp-<?php echo $interface['name']; ?>" 
-                                                   value="dhcp" <?php echo ($interface['config']['method'] ?? '') === 'dhcp' ? 'checked' : ''; ?>>
-                                            <label class="form-check-label" for="dhcp-<?php echo $interface['name']; ?>">
-                                                DHCP
-                                            </label>
-                                        </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="method" id="static-<?php echo $interface['name']; ?>" 
-                                                   value="static" <?php echo ($interface['config']['method'] ?? '') === 'static' ? 'checked' : ''; ?>>
-                                            <label class="form-check-label" for="static-<?php echo $interface['name']; ?>">
-                                                Static IP
-                                            </label>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="mb-3" id="static-ip-fields-<?php echo $interface['name']; ?>" 
-                                         style="<?php echo ($interface['config']['method'] ?? '') === 'static' ? 'display: block;' : 'display: none;'; ?>">
-                                        <label class="form-label">IP Address</label>
-                                        <input type="text" class="form-control" name="ip" 
-                                               value="<?php echo htmlspecialchars($interface['config']['ip'] ?? ''); ?>" 
-                                               placeholder="192.168.1.100">
-                                        
-                                        <label class="form-label mt-2">Netmask</label>
-                                        <input type="text" class="form-control" name="netmask" 
-                                               value="<?php echo htmlspecialchars($interface['config']['netmask'] ?? ''); ?>" 
-                                               placeholder="255.255.255.0">
-                                        
-                                        <label class="form-label mt-2">Gateway</label>
-                                        <input type="text" class="form-control" name="gateway" 
-                                               value="<?php echo htmlspecialchars($interface['config']['gateway'] ?? ''); ?>" 
-                                               placeholder="192.168.1.1">
-                                        
-                                        <label class="form-label mt-2">DNS Server</label>
-                                        <input type="text" class="form-control" name="dns" 
-                                               value="<?php echo htmlspecialchars($interface['config']['dns'] ?? ''); ?>" 
-                                               placeholder="8.8.8.8">
-                                    </div>
-                                    
-                                    <div class="d-flex justify-content-between">
-                                        <button type="submit" name="action" value="save" class="btn btn-primary">Save Configuration</button>
-                                        <div>
-                                            <button type="submit" name="action" value="activate" 
-                                                    class="btn btn-success <?php echo $interface['status'] === 'up' ? 'disabled' : ''; ?>">
-                                                Activate
-                                            </button>
-                                            <button type="submit" name="action" value="deactivate" 
-                                                    class="btn btn-danger <?php echo $interface['status'] === 'down' ? 'disabled' : ''; ?>">
-                                                Deactivate
-                                            </button>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
+    <div class="tab-content" id="settingsTabContent">
+        <!-- General Settings -->
+        <div class="tab-pane fade show active" id="general" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>General Network Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="">
+                        <input type="hidden" name="action" value="save_general">
+                        
+                        <div class="mb-3">
+                            <label for="hostname" class="form-label">Hostname</label>
+                            <input type="text" class="form-control" id="hostname" name="hostname" 
+                                   value="<?php echo htmlspecialchars($general_config['hostname']); ?>">
                         </div>
+                        
+                        <div class="mb-3">
+                            <label for="dns_servers" class="form-label">DNS Servers (comma separated)</label>
+                            <input type="text" class="form-control" id="dns_servers" name="dns_servers" 
+                                   value="<?php echo htmlspecialchars($general_config['dns_servers']); ?>">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="ntp_servers" class="form-label">NTP Servers (comma separated)</label>
+                            <input type="text" class="form-control" id="ntp_servers" name="ntp_servers" 
+                                   value="<?php echo htmlspecialchars($general_config['ntp_servers']); ?>">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="proxy" class="form-label">Proxy Server</label>
+                            <input type="text" class="form-control" id="proxy" name="proxy" 
+                                   value="<?php echo htmlspecialchars($general_config['proxy']); ?>">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Save General Settings</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Interfaces Tab -->
+        <div class="tab-pane fade" id="interfaces" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Network Interfaces</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Interface Tabs -->
+                    <ul class="nav nav-tabs" id="interfaceTabs" role="tablist">
+                        <?php $first = true; foreach ($interface_data as $interface): ?>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link <?php echo $first ? 'active' : ''; ?>" 
+                                        id="tab-<?php echo $interface['name']; ?>" 
+                                        data-bs-toggle="tab" 
+                                        data-bs-target="#<?php echo $interface['name']; ?>" 
+                                        type="button" 
+                                        role="tab">
+                                    <?php echo htmlspecialchars($interface['name']); ?>
+                                </button>
+                            </li>
+                        <?php $first = false; endforeach; ?>
+                    </ul>
+                    
+                    <!-- Interface Tab Content -->
+                    <div class="tab-content" id="interfaceTabContent">
+                        <?php $first = true; foreach ($interface_data as $interface): ?>
+                            <div class="tab-pane fade <?php echo $first ? 'show active' : ''; ?>" 
+                                 id="<?php echo $interface['name']; ?>" 
+                                 role="tabpanel">
+                                <div class="card mt-3">
+                                    <div class="card-header">
+                                        <h5><?php echo htmlspecialchars($interface['name']); ?></h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p><strong>IP Address:</strong> <?php echo htmlspecialchars($interface['ip'] ?: 'N/A'); ?></p>
+                                                <p><strong>MAC Address:</strong> <?php echo htmlspecialchars($interface['mac'] ?: 'N/A'); ?></p>
+                                                <p><strong>Status:</strong> 
+                                                    <span class="badge bg-<?php echo $interface['status'] === 'up' ? 'success' : 'secondary'; ?>">
+                                                        <?php echo htmlspecialchars($interface['status']); ?>
+                                                    </span>
+                                                </p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <form method="post" action="">
+                                                    <input type="hidden" name="interface" value="<?php echo htmlspecialchars($interface['name']); ?>">
+                                                    <input type="hidden" name="action" value="save">
+                                                    
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Configuration Method</label>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="method" id="dhcp-<?php echo $interface['name']; ?>" 
+                                                                   value="dhcp" <?php echo ($interface['config']['method'] ?? '') === 'dhcp' ? 'checked' : ''; ?>>
+                                                            <label class="form-check-label" for="dhcp-<?php echo $interface['name']; ?>">
+                                                                DHCP
+                                                            </label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="method" id="static-<?php echo $interface['name']; ?>" 
+                                                                   value="static" <?php echo ($interface['config']['method'] ?? '') === 'static' ? 'checked' : ''; ?>>
+                                                            <label class="form-check-label" for="static-<?php echo $interface['name']; ?>">
+                                                                Static IP
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3" id="static-ip-fields-<?php echo $interface['name']; ?>" 
+                                                         style="<?php echo ($interface['config']['method'] ?? '') === 'static' ? 'display: block;' : 'display: none;'; ?>">
+                                                        <label class="form-label">IP Address</label>
+                                                        <input type="text" class="form-control" name="ip" 
+                                                               value="<?php echo htmlspecialchars($interface['config']['ip'] ?? ''); ?>" 
+                                                               placeholder="192.168.1.100">
+                                                        
+                                                        <label class="form-label mt-2">Netmask</label>
+                                                        <input type="text" class="form-control" name="netmask" 
+                                                               value="<?php echo htmlspecialchars($interface['config']['netmask'] ?? ''); ?>" 
+                                                               placeholder="255.255.255.0">
+                                                        
+                                                        <label class="form-label mt-2">Gateway</label>
+                                                        <input type="text" class="form-control" name="gateway" 
+                                                               value="<?php echo htmlspecialchars($interface['config']['gateway'] ?? ''); ?>" 
+                                                               placeholder="192.168.1.1">
+                                                        
+                                                        <label class="form-label mt-2">DNS Server</label>
+                                                        <input type="text" class="form-control" name="dns" 
+                                                               value="<?php echo htmlspecialchars($interface['config']['dns'] ?? ''); ?>" 
+                                                               placeholder="8.8.8.8">
+                                                    </div>
+                                                    
+                                                    <div class="d-flex justify-content-between">
+                                                        <button type="submit" class="btn btn-primary">Save Configuration</button>
+                                                        <div>
+                                                            <button type="submit" name="action" value="activate" 
+                                                                    class="btn btn-success <?php echo $interface['status'] === 'up' ? 'disabled' : ''; ?>">
+                                                                Activate
+                                                            </button>
+                                                            <button type="submit" name="action" value="deactivate" 
+                                                                    class="btn btn-danger <?php echo $interface['status'] === 'down' ? 'disabled' : ''; ?>">
+                                                                Deactivate
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php $first = false; endforeach; ?>
                     </div>
                 </div>
             </div>
-        <?php $first = false; endforeach; ?>
+        </div>
+        
+        <!-- DNS Settings -->
+        <div class="tab-pane fade" id="dns" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>DNS Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="">
+                        <input type="hidden" name="action" value="save_general">
+                        
+                        <div class="mb-3">
+                            <label for="dns_servers" class="form-label">DNS Servers (comma separated)</label>
+                            <input type="text" class="form-control" id="dns_servers" name="dns_servers" 
+                                   value="<?php echo htmlspecialchars($general_config['dns_servers']); ?>">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="dns_domain" class="form-label">Search Domain</label>
+                            <input type="text" class="form-control" id="dns_domain" name="dns_domain" 
+                                   value="<?php echo htmlspecialchars($general_config['dns_domain'] ?? ''); ?>">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="dns_cache" class="form-label">DNS Cache Size</label>
+                            <input type="text" class="form-control" id="dns_cache" name="dns_cache" 
+                                   value="<?php echo htmlspecialchars($general_config['dns_cache'] ?? ''); ?>">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Save DNS Settings</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- NTP Settings -->
+        <div class="tab-pane fade" id="ntp" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>NTP Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="">
+                        <input type="hidden" name="action" value="save_general">
+                        
+                        <div class="mb-3">
+                            <label for="ntp_servers" class="form-label">NTP Servers (comma separated)</label>
+                            <input type="text" class="form-control" id="ntp_servers" name="ntp_servers" 
+                                   value="<?php echo htmlspecialchars($general_config['ntp_servers']); ?>">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="ntp_timezone" class="form-label">Timezone</label>
+                            <input type="text" class="form-control" id="ntp_timezone" name="ntp_timezone" 
+                                   value="<?php echo htmlspecialchars($general_config['ntp_timezone'] ?? ''); ?>">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">NTP Sync Method</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="ntp_method" id="ntp_method1" 
+                                       value="systemd" <?php echo ($general_config['ntp_method'] ?? '') === 'systemd' ? 'checked' : ''; ?>>
+                                <label class="form-check-label" for="ntp_method1">
+                                    Systemd-timesyncd
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="ntp_method" id="ntp_method2" 
+                                       value="ntp" <?php echo ($general_config['ntp_method'] ?? '') === 'ntp' ? 'checked' : ''; ?>>
+                                <label class="form-check-label" for="ntp_method2">
+                                    NTP Daemon
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Save NTP Settings</button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
