@@ -127,106 +127,94 @@ $general_config = $network_config['general'] ?? [
 <div class="container">
     <h2>Network Configuration</h2>
     
-    <!-- General Settings Tabs -->
-    <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
-                General Settings
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="interfaces-tab" data-bs-toggle="tab" data-bs-target="#interfaces" type="button" role="tab">
-                Interfaces
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="dns-tab" data-bs-toggle="tab" data-bs-target="#dns" type="button" role="tab">
-                DNS Settings
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="ntp-tab" data-bs-toggle="tab" data-bs-target="#ntp" type="button" role="tab">
-                NTP Settings
-            </button>
-        </li>
-    </ul>
-    
-    <!-- Tab Content -->
-    <div class="tab-content" id="settingsTabContent">
-        <!-- General Settings -->
-        <div class="tab-pane fade show active" id="general" role="tabpanel">
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h5>General Network Settings</h5>
-                </div>
-                <div class="card-body">
-                    <form method="post" action="">
-                        <input type="hidden" name="action" value="save_general">
-                        
-                        <div class="mb-3">
-                            <label for="hostname" class="form-label">Hostname</label>
-                            <input type="text" class="form-control" id="hostname" name="hostname" 
-                                   value="<?php echo htmlspecialchars($general_config['hostname']); ?>">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="dns_servers" class="form-label">DNS Servers (comma separated)</label>
-                            <input type="text" class="form-control" id="dns_servers" name="dns_servers" 
-                                   value="<?php echo htmlspecialchars($general_config['dns_servers']); ?>">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="ntp_servers" class="form-label">NTP Servers (comma separated)</label>
-                            <input type="text" class="form-control" id="ntp_servers" name="ntp_servers" 
-                                   value="<?php echo htmlspecialchars($general_config['ntp_servers']); ?>">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="proxy" class="form-label">Proxy Server</label>
-                            <input type="text" class="form-control" id="proxy" name="proxy" 
-                                   value="<?php echo htmlspecialchars($general_config['proxy']); ?>">
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary">Save General Settings</button>
-                    </form>
+    <!-- Main container for network settings -->
+    <div class="network-settings-container">
+        <!-- Tabs for different sections -->
+        <ul class="nav nav-tabs" id="networkTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
+                    General Settings
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="interfaces-tab" data-bs-toggle="tab" data-bs-target="#interfaces" type="button" role="tab">
+                    Interfaces
+                </button>
+            </li>
+        </ul>
+        
+        <!-- Tab Content -->
+        <div class="tab-content" id="networkTabContent">
+            <!-- General Settings -->
+            <div class="tab-pane fade show active" id="general" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>General Network Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="">
+                            <input type="hidden" name="action" value="save_general">
+                            
+                            <div class="mb-3">
+                                <label for="hostname" class="form-label">Hostname</label>
+                                <input type="text" class="form-control" id="hostname" name="hostname" 
+                                       value="<?php echo htmlspecialchars($general_config['hostname']); ?>">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="dns_servers" class="form-label">DNS Servers (comma separated)</label>
+                                <input type="text" class="form-control" id="dns_servers" name="dns_servers" 
+                                       value="<?php echo htmlspecialchars($general_config['dns_servers']); ?>">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="ntp_servers" class="form-label">NTP Servers (comma separated)</label>
+                                <input type="text" class="form-control" id="ntp_servers" name="ntp_servers" 
+                                       value="<?php echo htmlspecialchars($general_config['ntp_servers']); ?>">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="proxy" class="form-label">Proxy Server</label>
+                                <input type="text" class="form-control" id="proxy" name="proxy" 
+                                       value="<?php echo htmlspecialchars($general_config['proxy']); ?>">
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Save General Settings</button>
+                        </form>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Interfaces Tab -->
-        <div class="tab-pane fade" id="interfaces" role="tabpanel">
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h5>Network Interfaces</h5>
-                </div>
-                <div class="card-body">
-                    <!-- Interface Tabs -->
-                    <ul class="nav nav-tabs" id="interfaceTabs" role="tablist">
-                        <?php $first = true; foreach ($interface_data as $interface): ?>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link <?php echo $first ? 'active' : ''; ?>" 
-                                        id="tab-<?php echo $interface['name']; ?>" 
-                                        data-bs-toggle="tab" 
-                                        data-bs-target="#<?php echo $interface['name']; ?>" 
-                                        type="button" 
-                                        role="tab">
-                                    <?php echo htmlspecialchars($interface['name']); ?>
-                                </button>
-                            </li>
-                        <?php $first = false; endforeach; ?>
-                    </ul>
-                    
-                    <!-- Interface Tab Content -->
-                    <div class="tab-content" id="interfaceTabContent">
-                        <?php $first = true; foreach ($interface_data as $interface): ?>
-                            <div class="tab-pane fade <?php echo $first ? 'show active' : ''; ?>" 
-                                 id="<?php echo $interface['name']; ?>" 
-                                 role="tabpanel">
-                                <div class="card mt-3">
-                                    <div class="card-header">
-                                        <h5><?php echo htmlspecialchars($interface['name']); ?></h5>
-                                    </div>
-                                    <div class="card-body">
+            
+            <!-- Interfaces Tab -->
+            <div class="tab-pane fade" id="interfaces" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>Network Interfaces</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Interface Tabs -->
+                        <ul class="nav nav-tabs interface-tabs" id="interfaceTabs" role="tablist">
+                            <?php $first = true; foreach ($interface_data as $interface): ?>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link <?php echo $first ? 'active' : ''; ?>" 
+                                            id="tab-<?php echo $interface['name']; ?>" 
+                                            data-bs-toggle="tab" 
+                                            data-bs-target="#<?php echo $interface['name']; ?>" 
+                                            type="button" 
+                                            role="tab">
+                                        <?php echo htmlspecialchars($interface['name']); ?>
+                                    </button>
+                                </li>
+                            <?php $first = false; endforeach; ?>
+                        </ul>
+                        
+                        <!-- Interface Tab Content -->
+                        <div class="tab-content interface-tab-content" id="interfaceTabContent">
+                            <?php $first = true; foreach ($interface_data as $interface): ?>
+                                <div class="tab-pane fade <?php echo $first ? 'show active' : ''; ?>" 
+                                     id="<?php echo $interface['name']; ?>" 
+                                     role="tabpanel">
+                                    <div class="interface-settings">
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <p><strong>IP Address:</strong> <?php echo htmlspecialchars($interface['ip'] ?: 'N/A'); ?></p>
@@ -301,89 +289,9 @@ $general_config = $network_config['general'] ?? [
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        <?php $first = false; endforeach; ?>
+                            <?php $first = false; endforeach; ?>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- DNS Settings -->
-        <div class="tab-pane fade" id="dns" role="tabpanel">
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h5>DNS Configuration</h5>
-                </div>
-                <div class="card-body">
-                    <form method="post" action="">
-                        <input type="hidden" name="action" value="save_general">
-                        
-                        <div class="mb-3">
-                            <label for="dns_servers" class="form-label">DNS Servers (comma separated)</label>
-                            <input type="text" class="form-control" id="dns_servers" name="dns_servers" 
-                                   value="<?php echo htmlspecialchars($general_config['dns_servers']); ?>">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="dns_domain" class="form-label">Search Domain</label>
-                            <input type="text" class="form-control" id="dns_domain" name="dns_domain" 
-                                   value="<?php echo htmlspecialchars($general_config['dns_domain'] ?? ''); ?>">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="dns_cache" class="form-label">DNS Cache Size</label>
-                            <input type="text" class="form-control" id="dns_cache" name="dns_cache" 
-                                   value="<?php echo htmlspecialchars($general_config['dns_cache'] ?? ''); ?>">
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary">Save DNS Settings</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-        
-        <!-- NTP Settings -->
-        <div class="tab-pane fade" id="ntp" role="tabpanel">
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h5>NTP Configuration</h5>
-                </div>
-                <div class="card-body">
-                    <form method="post" action="">
-                        <input type="hidden" name="action" value="save_general">
-                        
-                        <div class="mb-3">
-                            <label for="ntp_servers" class="form-label">NTP Servers (comma separated)</label>
-                            <input type="text" class="form-control" id="ntp_servers" name="ntp_servers" 
-                                   value="<?php echo htmlspecialchars($general_config['ntp_servers']); ?>">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="ntp_timezone" class="form-label">Timezone</label>
-                            <input type="text" class="form-control" id="ntp_timezone" name="ntp_timezone" 
-                                   value="<?php echo htmlspecialchars($general_config['ntp_timezone'] ?? ''); ?>">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">NTP Sync Method</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="ntp_method" id="ntp_method1" 
-                                       value="systemd" <?php echo ($general_config['ntp_method'] ?? '') === 'systemd' ? 'checked' : ''; ?>>
-                                <label class="form-check-label" for="ntp_method1">
-                                    Systemd-timesyncd
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="ntp_method" id="ntp_method2" 
-                                       value="ntp" <?php echo ($general_config['ntp_method'] ?? '') === 'ntp' ? 'checked' : ''; ?>>
-                                <label class="form-check-label" for="ntp_method2">
-                                    NTP Daemon
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary">Save NTP Settings</button>
-                    </form>
                 </div>
             </div>
         </div>

@@ -534,3 +534,69 @@ main {
 .pulse {
     animation: pulse 2s infinite;
 }
+
+.network-settings-container {
+    margin-top: 100px;
+    padding: 20px;
+    background: rgba(13, 27, 45, 0.7);
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(92, 158, 255, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+/* Interface tabs styling */
+.interface-tabs {
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(92, 158, 255, 0.2);
+}
+
+.interface-tabs .nav-link {
+    color: var(--text-secondary);
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+    padding: 12px 20px;
+    transition: all 0.3s ease;
+}
+
+.interface-tabs .nav-link:hover {
+    color: var(--accent-blue-light);
+    border-bottom: 3px solid var(--accent-blue-light);
+}
+
+.interface-tabs .nav-link.active {
+    color: var(--accent-blue-light);
+    border-bottom: 3px solid var(--accent-blue-light);
+    background: transparent;
+}
+
+/* Interface tab content */
+.interface-tab-content {
+    padding: 20px 0;
+}
+
+/* Interface settings area */
+.interface-settings {
+    background: rgba(10, 25, 41, 0.5);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .network-settings-container {
+        margin-top: 120px;
+        padding: 15px;
+    }
+    
+    .interface-tabs .nav-link {
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+    
+    .interface-settings {
+        padding: 15px;
+    }
+}
