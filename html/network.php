@@ -78,6 +78,11 @@ function generate_netplan_config($config)
             continue;
         }
 
+        // Skip disabled interfaces
+        if (($settings['method'] ?? '') === 'disable') {
+            continue;
+        }
+
         $netplan_content .= "    $interface:\n";
 
         switch ($settings['method']) {
@@ -134,8 +139,8 @@ function generate_netplan_config($config)
 
     // Run netplan try to validate configuration
     exec('sudo cp /var/www/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml', $output, $return_code);
-    exec('sudo netplan try', $output, $return_code);
-
+    exec("sudo netplan generate 2>&1", $out, $return_code);
+    
     if ($return_code !==  0) {
         if (file_exists($backup_file)) {
             exec('sudo cp /var/www/50-cloud-init.yaml_backup /etc/netplan/50-cloud-init.yaml', $output, $return_code);
