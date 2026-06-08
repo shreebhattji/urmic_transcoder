@@ -553,13 +553,51 @@ main {
     backdrop-filter: blur(10px);
 }
 
-/* Horizontal network interfaces */
-.network-interfaces-horizontal {
+.interface-tabs {
+    margin-bottom: 20px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(92, 158, 255, 0.2);
+}
+
+.interface-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 20px;
+    gap: 8px;
+}
+
+.tab-button {
+    padding: 10px 20px;
+    background: rgba(13, 27, 45, 0.7);
+    border: 1px solid rgba(92, 158, 255, 0.3);
+    border-radius: 8px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    backdrop-filter: blur(5px);
+}
+
+.tab-button:hover {
+    background: rgba(0, 168, 255, 0.2);
+    border-color: var(--accent-blue-light);
+}
+
+.tab-button.active {
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-blue-light));
+    color: white;
+    border-color: var(--accent-blue-light);
+    box-shadow: 0 4px 12px rgba(0, 168, 255, 0.3);
+}
+
+/* Activation buttons */
+.activation-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
     justify-content: flex-start;
 }
+
+/* ... existing CSS ... */
 
 .interface-card {
     flex: 1 1 300px;
@@ -650,5 +688,24 @@ main {
     .interface-card {
         width: 100%;
         min-width: auto;
+    }
+    
+    .interface-list {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .tab-button {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .activation-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .activation-buttons button {
+        width: 100%;
     }
 }

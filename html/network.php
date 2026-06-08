@@ -116,15 +116,15 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
         <div class="card wide">
             <h3>Network Configuration</h3>
 
-            <!-- Interface selection -->
-            <div class="interface-selector">
-                <h4>Select Interface:</h4>
+            <!-- Interface selection tabs -->
+            <div class="interface-tabs">
                 <div class="interface-list">
                     <?php foreach ($interface_data as $interface): ?>
-                        <a href="?interface=<?php echo urlencode($interface['name']); ?>"
-                            class="btn <?php echo $selected_interface === $interface['name'] ? 'btn-primary' : 'btn-outline-primary'; ?>">
+                        <button type="button" 
+                                class="tab-button <?php echo $selected_interface === $interface['name'] ? 'active' : ''; ?>"
+                                data-interface="<?php echo htmlspecialchars($interface['name']); ?>">
                             <?php echo htmlspecialchars($interface['name']); ?>
-                        </a>
+                        </button>
                     <?php endforeach; ?>
                 </div>
             </div>
@@ -144,6 +144,18 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                             <p><strong>MAC Address:</strong> <?php echo htmlspecialchars($interface_data[$selected_interface]['mac'] ?: 'N/A'); ?></p>
                         </div>
                         <div class="interface-footer">
+                            <!-- Activation buttons -->
+                            <div class="activation-buttons">
+                                <button type="submit" name="action" value="activate" 
+                                        class="btn btn-success <?php echo $interface_data[$selected_interface]['status'] === 'up' ? 'disabled' : ''; ?>">
+                                    Activate
+                                </button>
+                                <button type="submit" name="action" value="deactivate" 
+                                        class="btn btn-danger <?php echo $interface_data[$selected_interface]['status'] === 'down' ? 'disabled' : ''; ?>">
+                                    Deactivate
+                                </button>
+                            </div>
+                            
                             <form method="post" action="" class="interface-form">
                                 <input type="hidden" name="interface" value="<?php echo htmlspecialchars($selected_interface); ?>">
                                 <input type="hidden" name="action" value="save">
@@ -182,11 +194,6 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                                     <input type="text" class="form-control" name="gateway"
                                         value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['gateway'] ?? ''); ?>"
                                         placeholder="192.168.1.1">
-
-                                    <label class="form-label mt-2">DNS Server</label>
-                                    <input type="text" class="form-control" name="dns"
-                                        value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['dns'] ?? ''); ?>"
-                                        placeholder="8.8.8.8">
                                 </div>
 
                                 <div class="mb-3">
@@ -209,16 +216,6 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
 
                                 <div class="d-flex justify-content-between">
                                     <button type="submit" class="btn btn-primary">Save Configuration</button>
-                                    <div>
-                                        <button type="submit" name="action" value="activate"
-                                            class="btn btn-success <?php echo $interface_data[$selected_interface]['status'] === 'up' ? 'disabled' : ''; ?>">
-                                            Activate
-                                        </button>
-                                        <button type="submit" name="action" value="deactivate"
-                                            class="btn btn-danger <?php echo $interface_data[$selected_interface]['status'] === 'down' ? 'disabled' : ''; ?>">
-                                            Deactivate
-                                        </button>
-                                    </div>
                                 </div>
                             </form>
                         </div>
@@ -245,6 +242,14 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
             } else {
                 staticFields.style.display = 'none';
             }
+        });
+    });
+
+    // Tab switching functionality
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const interfaceName = this.getAttribute('data-interface');
+            window.location.href = '?interface=' + encodeURIComponent(interfaceName);
         });
     });
 </script>
