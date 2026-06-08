@@ -38,12 +38,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $network_config[$interface] = $config;
             file_put_contents($config_file, json_encode($network_config, JSON_PRETTY_PRINT));
-        } elseif ($action === 'activate') {
-            // Activate interface
-            exec("sudo ip link set $interface up", $output, $return_code);
-        } elseif ($action === 'deactivate') {
-            // Deactivate interface
-            exec("sudo ip link set $interface down", $output, $return_code);
+        } elseif ($action === 'toggle') {
+            // Toggle interface state
+            $current_status = $interface_data[$interface]['status'] ?? 'down';
+            if ($current_status === 'up') {
+                exec("sudo ip link set $interface down", $output, $return_code);
+            } else {
+                exec("sudo ip link set $interface up", $output, $return_code);
+            }
         }
     }
 }
@@ -144,15 +146,11 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                             <p><strong>MAC Address:</strong> <?php echo htmlspecialchars($interface_data[$selected_interface]['mac'] ?: 'N/A'); ?></p>
                         </div>
                         <div class="interface-footer">
-                            <!-- Activation buttons -->
+                            <!-- Activation toggle button -->
                             <div class="activation-buttons">
-                                <button type="submit" name="action" value="activate" 
-                                        class="btn btn-success <?php echo $interface_data[$selected_interface]['status'] === 'up' ? 'disabled' : ''; ?>">
-                                    Activate
-                                </button>
-                                <button type="submit" name="action" value="deactivate" 
-                                        class="btn btn-danger <?php echo $interface_data[$selected_interface]['status'] === 'down' ? 'disabled' : ''; ?>">
-                                    Deactivate
+                                <button type="submit" name="action" value="toggle" 
+                                        class="btn btn-<?php echo $interface_data[$selected_interface]['status'] === 'up' ? 'warning' : 'success'; ?>">
+                                    <?php echo $interface_data[$selected_interface]['status'] === 'up' ? 'Deactivate' : 'Activate'; ?>
                                 </button>
                             </div>
                             
