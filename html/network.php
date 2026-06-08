@@ -38,6 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $network_config[$interface] = $config;
             file_put_contents($config_file, json_encode($network_config, JSON_PRETTY_PRINT));
+            
+            // Generate netplan configuration
+            generate_netplan_config($network_config);
         } elseif ($action === 'toggle') {
             // Toggle interface state
             $current_status = $interface_data[$interface]['status'] ?? 'down';
@@ -46,6 +49,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 exec("sudo ip link set $interface up", $output, $return_code);
             }
+        }
+    }
+}
+
+// Generate netplan configuration file
+function generate_netplan_config($config) {
+    // Create backup of cloud-init configuration
+    $cloud_init_file = '/etc/netplan/50-cloud-init.yaml';
+    $backup_file = '/var/www/50-cloud-init.yaml_backup';
+    $source_file = '/var/www/50-cloud-init.yaml';
+    
+    // Create backup if it doesn't exist
+    if (file_exists($cloud_init_file)) {
+        if (!file_exists($backup_file)) {
+            copy($cloud_init_file, $backup_file);
+        }
+        
+        // Copy current cloud-init config to source file
+        copy($cloud_init_file, $source_file);
+    }
+    
+    $netplan_content = "network:\n  version: 2\n  ethernets:\n";
+    
+    foreach ($config as $interface => $settings) {
+        // Skip virtual interfaces and loopback
+        if (strpos($interface, 'enx') === 0 || 
+            strpos($interface, 'docker') === 0 || 
+            strpos($interface, 'br-') === 0 || 
+            strpos($interface, 'veth') === 0 || 
+            $interface === 'lo') {
+            continue;
+        }
+
+        $netplan_content .= "    $interface:\n";
+        
+        switch ($settings['method']) {
+            case 'dhcp':
+                $netplan_content .= "      dhcp4: true\n";
+                break;
+            case 'static':
+                $netplan_content .= "      addresses:\n        - " . $settings['ip'] . "/24\n";
+                if (!empty($settings['gateway'])) {
+                    $netplan_content .= "      gateway4: " . $settings['gateway'] . "\n";
+                }
+                if (!empty($settings['dns'])) {
+                    $netplan_content .= "      nameservers:\n        addresses:\n          - " . $settings['dns'] . "\n";
+                }
+                break;
+            case 'disable':
+            default:
+                $netplan_content .= "      dhcp4: false\n";
+                break;
+        }
+    }
+
+    // Write to netplan file
+    file_put_contents('/etc/netplan/50-cloud-init.yaml', $netplan_content);
+    
+    // Apply netplan configuration with validation
+    $output = [];
+    $return_code = 0;
+    
+    // Run netplan try to validate configuration
+    exec('sudo netplan try', $output, $return_code);
+    
+    if ($return_code === 0) {
+        // Configuration is valid, copy to cloud-init file
+        if (file_exists($source_file)) {
+            copy($source_file, $cloud_init_file);
+        }
+    } else {
+        // Configuration failed, restore backup
+        if (file_exists($backup_file)) {
+            copy($backup_file, $cloud_init_file);
+            // Re-apply the backup configuration
+            exec('sudo netplan apply', $output, $return_code);
         }
     }
 }
