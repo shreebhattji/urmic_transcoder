@@ -159,7 +159,6 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
 
                             <div class="mb-3">
                                 <label class="form-label">Multicast</label>
-
                                 <div class="form-check form-switch">
                                     <input
                                         class="form-check-input multicast-toggle"
@@ -168,14 +167,12 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                                         name="multicast"
                                         value="on"
                                         <?php echo (($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on') ? 'checked' : ''; ?>>
+                                    <label class="form-check-label" for="multicast-<?php echo $selected_interface; ?>">
+                                        <?php echo (($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on') ? 'Enabled' : 'Disabled'; ?>
+                                    </label>
                                 </div>
-
-                                <label
-                                    id="multicast-label-<?php echo $selected_interface; ?>"
-                                    for="multicast-<?php echo $selected_interface; ?>">
-                                    <?php echo (($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on') ? 'Enabled' : 'Disabled'; ?>
-                                </label>
                             </div>
+
                             <div class="mb-3">
                                 <label class="form-label">Configuration Method</label>
                                 <div class="form-check">
@@ -271,34 +268,18 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
         });
     });
 
-    // Multicast toggle switch functionality - simplified approach
+    // Multicast toggle switch functionality
     document.addEventListener('DOMContentLoaded', function() {
-
         document.querySelectorAll('.multicast-toggle').forEach(function(checkbox) {
-
-            checkbox.addEventListener('click', function() {
-
+            checkbox.addEventListener('change', function() {
                 const interfaceName = this.id.replace('multicast-', '');
-
-                const label = document.getElementById(
-                    'multicast-label-' + interfaceName
-                );
-
+                const label = this.nextElementSibling; // Get the label element
+                
                 if (label) {
-                    label.textContent = this.checked ?
-                        'Enabled' :
-                        'Disabled';
+                    label.textContent = this.checked ? 'Enabled' : 'Disabled';
                 }
-
-                console.log(
-                    'Multicast:',
-                    interfaceName,
-                    this.checked ? 'on' : 'off'
-                );
             });
-
         });
-
     });
 </script>
 
