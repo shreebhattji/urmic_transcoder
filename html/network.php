@@ -103,91 +103,108 @@ foreach ($output as $line) {
         $interface_data[$current_interface]['status'] = 'up';
     }
 }
+
+// Get selected interface from GET parameter or first interface
+$selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? null;
 ?>
 
 <div class="container">
     <h2>Network Configuration</h2>
     
-    <!-- Main container for network settings -->
-    <div class="network-settings-container">
-        <!-- Network Interfaces in horizontal line -->
-        <div class="network-interfaces-horizontal">
+    <!-- Interface selection -->
+    <div class="interface-selector">
+        <h4>Select Interface:</h4>
+        <div class="interface-list">
             <?php foreach ($interface_data as $interface): ?>
-                <div class="interface-card">
-                    <div class="interface-header">
-                        <h5><?php echo htmlspecialchars($interface['name']); ?></h5>
-                        <span class="badge bg-<?php echo $interface['status'] === 'up' ? 'success' : 'secondary'; ?>">
-                            <?php echo htmlspecialchars($interface['status']); ?>
-                        </span>
-                    </div>
-                    <div class="interface-body">
-                        <p><strong>IP Address:</strong> <?php echo htmlspecialchars($interface['ip'] ?: 'N/A'); ?></p>
-                        <p><strong>MAC Address:</strong> <?php echo htmlspecialchars($interface['mac'] ?: 'N/A'); ?></p>
-                    </div>
-                    <div class="interface-footer">
-                        <form method="post" action="" class="interface-form">
-                            <input type="hidden" name="interface" value="<?php echo htmlspecialchars($interface['name']); ?>">
-                            <input type="hidden" name="action" value="save">
-                            
-                            <div class="mb-3">
-                                <label class="form-label">Configuration Method</label>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="method" id="dhcp-<?php echo $interface['name']; ?>" 
-                                           value="dhcp" <?php echo ($interface['config']['method'] ?? '') === 'dhcp' ? 'checked' : ''; ?>>
-                                    <label class="form-check-label" for="dhcp-<?php echo $interface['name']; ?>">
-                                        DHCP
-                                    </label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="method" id="static-<?php echo $interface['name']; ?>" 
-                                           value="static" <?php echo ($interface['config']['method'] ?? '') === 'static' ? 'checked' : ''; ?>>
-                                    <label class="form-check-label" for="static-<?php echo $interface['name']; ?>">
-                                        Static IP
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <div class="mb-3" id="static-ip-fields-<?php echo $interface['name']; ?>" 
-                                 style="<?php echo ($interface['config']['method'] ?? '') === 'static' ? 'display: block;' : 'display: none;'; ?>">
-                                <label class="form-label">IP Address</label>
-                                <input type="text" class="form-control" name="ip" 
-                                       value="<?php echo htmlspecialchars($interface['config']['ip'] ?? ''); ?>" 
-                                       placeholder="192.168.1.100">
-                                
-                                <label class="form-label mt-2">Netmask</label>
-                                <input type="text" class="form-control" name="netmask" 
-                                       value="<?php echo htmlspecialchars($interface['config']['netmask'] ?? ''); ?>" 
-                                       placeholder="255.255.255.0">
-                                
-                                <label class="form-label mt-2">Gateway</label>
-                                <input type="text" class="form-control" name="gateway" 
-                                       value="<?php echo htmlspecialchars($interface['config']['gateway'] ?? ''); ?>" 
-                                       placeholder="192.168.1.1">
-                                
-                                <label class="form-label mt-2">DNS Server</label>
-                                <input type="text" class="form-control" name="dns" 
-                                       value="<?php echo htmlspecialchars($interface['config']['dns'] ?? ''); ?>" 
-                                       placeholder="8.8.8.8">
-                            </div>
-                            
-                            <div class="d-flex justify-content-between">
-                                <button type="submit" class="btn btn-primary">Save Configuration</button>
-                                <div>
-                                    <button type="submit" name="action" value="activate" 
-                                            class="btn btn-success <?php echo $interface['status'] === 'up' ? 'disabled' : ''; ?>">
-                                        Activate
-                                    </button>
-                                    <button type="submit" name="action" value="deactivate" 
-                                            class="btn btn-danger <?php echo $interface['status'] === 'down' ? 'disabled' : ''; ?>">
-                                        Deactivate
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                <a href="?interface=<?php echo urlencode($interface['name']); ?>" 
+                   class="btn <?php echo $selected_interface === $interface['name'] ? 'btn-primary' : 'btn-outline-primary'; ?>">
+                    <?php echo htmlspecialchars($interface['name']); ?>
+                </a>
             <?php endforeach; ?>
         </div>
+    </div>
+    
+    <!-- Main container for network settings -->
+    <div class="network-settings-container">
+        <?php if ($selected_interface && isset($interface_data[$selected_interface])): ?>
+            <div class="interface-card">
+                <div class="interface-header">
+                    <h5><?php echo htmlspecialchars($interface_data[$selected_interface]['name']); ?></h5>
+                    <span class="badge bg-<?php echo $interface_data[$selected_interface]['status'] === 'up' ? 'success' : 'secondary'; ?>">
+                        <?php echo htmlspecialchars($interface_data[$selected_interface]['status']); ?>
+                    </span>
+                </div>
+                <div class="interface-body">
+                    <p><strong>IP Address:</strong> <?php echo htmlspecialchars($interface_data[$selected_interface]['ip'] ?: 'N/A'); ?></p>
+                    <p><strong>MAC Address:</strong> <?php echo htmlspecialchars($interface_data[$selected_interface]['mac'] ?: 'N/A'); ?></p>
+                </div>
+                <div class="interface-footer">
+                    <form method="post" action="" class="interface-form">
+                        <input type="hidden" name="interface" value="<?php echo htmlspecialchars($selected_interface); ?>">
+                        <input type="hidden" name="action" value="save">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Configuration Method</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="method" id="dhcp-<?php echo $selected_interface; ?>" 
+                                       value="dhcp" <?php echo ($interface_data[$selected_interface]['config']['method'] ?? '') === 'dhcp' ? 'checked' : ''; ?>>
+                                <label class="form-check-label" for="dhcp-<?php echo $selected_interface; ?>">
+                                    DHCP
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="method" id="static-<?php echo $selected_interface; ?>" 
+                                       value="static" <?php echo ($interface_data[$selected_interface]['config']['method'] ?? '') === 'static' ? 'checked' : ''; ?>>
+                                <label class="form-check-label" for="static-<?php echo $selected_interface; ?>">
+                                    Static IP
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="static-ip-fields-<?php echo $selected_interface; ?>" 
+                             style="<?php echo ($interface_data[$selected_interface]['config']['method'] ?? '') === 'static' ? 'display: block;' : 'display: none;'; ?>">
+                            <label class="form-label">IP Address</label>
+                            <input type="text" class="form-control" name="ip" 
+                                   value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['ip'] ?? ''); ?>" 
+                                   placeholder="192.168.1.100">
+                            
+                            <label class="form-label mt-2">Netmask</label>
+                            <input type="text" class="form-control" name="netmask" 
+                                   value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['netmask'] ?? ''); ?>" 
+                                   placeholder="255.255.255.0">
+                            
+                            <label class="form-label mt-2">Gateway</label>
+                            <input type="text" class="form-control" name="gateway" 
+                                   value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['gateway'] ?? ''); ?>" 
+                                   placeholder="192.168.1.1">
+                            
+                            <label class="form-label mt-2">DNS Server</label>
+                            <input type="text" class="form-control" name="dns" 
+                                   value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['dns'] ?? ''); ?>" 
+                                   placeholder="8.8.8.8">
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-primary">Save Configuration</button>
+                            <div>
+                                <button type="submit" name="action" value="activate" 
+                                        class="btn btn-success <?php echo $interface_data[$selected_interface]['status'] === 'up' ? 'disabled' : ''; ?>">
+                                    Activate
+                                </button>
+                                <button type="submit" name="action" value="deactivate" 
+                                        class="btn btn-danger <?php echo $interface_data[$selected_interface]['status'] === 'down' ? 'disabled' : ''; ?>">
+                                    Deactivate
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        <?php else: ?>
+            <div class="alert alert-info">
+                No network interfaces found or selected.
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 
