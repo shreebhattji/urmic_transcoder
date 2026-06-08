@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
         $interface = $_POST['interface'] ?? '';
         $action = $_POST['action'];
+        $multicast = isset($_POST['multicast']) ? 'on' : 'off';
 
         if ($action === 'save') {
             // Save configuration
@@ -33,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'netmask' => $_POST['netmask'] ?? '',
                 'gateway' => $_POST['gateway'] ?? '',
                 'dns' => $_POST['dns'] ?? '',
-                'multicast' => $_POST['multicast'] ?? 'off'
+                'multicast' => $multicast
             ];
 
             $network_config[$interface] = $config;
@@ -158,16 +159,23 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
 
                             <div class="mb-3">
                                 <label class="form-label">Multicast</label>
-                                <div class="switch">
-                                    <input type="checkbox" id="multicast-<?php echo $selected_interface; ?>"
-                                        name="multicast" value="on" <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'checked' : ''; ?>>
-                                    <span class="slider"></span>
+
+                                <div class="form-check form-switch">
+                                    <input
+                                        class="form-check-input multicast-toggle"
+                                        type="checkbox"
+                                        id="multicast-<?php echo $selected_interface; ?>"
+                                        name="multicast"
+                                        value="on"
+                                        <?php echo (($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on') ? 'checked' : ''; ?>>
                                 </div>
-                                <label for="multicast-<?php echo $selected_interface; ?>" class="switch-label" id="multicast-label-<?php echo $selected_interface; ?>">
-                                    <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'Enabled' : 'Disabled'; ?>
+
+                                <label
+                                    id="multicast-label-<?php echo $selected_interface; ?>"
+                                    for="multicast-<?php echo $selected_interface; ?>">
+                                    <?php echo (($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on') ? 'Enabled' : 'Disabled'; ?>
                                 </label>
                             </div>
-
                             <div class="mb-3">
                                 <label class="form-label">Configuration Method</label>
                                 <div class="form-check">
@@ -265,24 +273,32 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
 
     // Multicast toggle switch functionality - simplified approach
     document.addEventListener('DOMContentLoaded', function() {
-        // Add event listeners to all multicast checkboxes
-        const checkboxes = document.querySelectorAll('input[id^="multicast-"]');
-        
-        checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                // Extract interface name from ID (format: multicast-eth0)
-                const idParts = this.id.split('-');
-                const interfaceName = idParts[1]; // Get the interface name part
-                
-                if (interfaceName) {
-                    const label = document.getElementById(`multicast-label-${interfaceName}`);
-                    if (label) {
-                        // Update label text based on checkbox state
-                        label.textContent = this.checked ? 'Enabled' : 'Disabled';
-                    }
+
+        document.querySelectorAll('.multicast-toggle').forEach(function(checkbox) {
+
+            checkbox.addEventListener('click', function() {
+
+                const interfaceName = this.id.replace('multicast-', '');
+
+                const label = document.getElementById(
+                    'multicast-label-' + interfaceName
+                );
+
+                if (label) {
+                    label.textContent = this.checked ?
+                        'Enabled' :
+                        'Disabled';
                 }
+
+                console.log(
+                    'Multicast:',
+                    interfaceName,
+                    this.checked ? 'on' : 'off'
+                );
             });
+
         });
+
     });
 </script>
 
