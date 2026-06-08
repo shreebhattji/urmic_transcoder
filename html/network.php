@@ -151,8 +151,8 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
 
                             <div class="mb-3">
                                 <label class="form-label">Interface Name</label>
-                                <input type="text" class="form-control" name="interface_name"
-                                    value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['interface_name'] ?? ''); ?>"
+                                <input type="text" class="form-control" name="interface"
+                                    value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['interface'] ?? $selected_interface); ?>"
                                     placeholder="Enter interface name">
                             </div>
 
@@ -268,7 +268,7 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
             checkbox.addEventListener('change', function() {
                 const switchContainer = this.closest('.switch-container');
                 const label = switchContainer.querySelector('.switch-label');
-                
+
                 if (label) {
                     label.textContent = this.checked ? 'Enabled' : 'Disabled';
                 }
