@@ -85,12 +85,37 @@ function generate_netplan_config($config)
                 $netplan_content .= "      dhcp4: true\n";
                 break;
             case 'static':
-                $netplan_content .= "      addresses:\n        - " . $settings['ip'] . "/24\n";
+                $netplan_content .= "      addresses:\n";
+                $netplan_content .= "        - " . $settings['ip'] . "/24\n";
+
+                $hasRoutes = false;
+
+                // Default gateway
                 if (!empty($settings['gateway'])) {
-                    $netplan_content .= "      gateway4: " . $settings['gateway'] . "\n";
+                    if (!$hasRoutes) {
+                        $netplan_content .= "      routes:\n";
+                        $hasRoutes = true;
+                    }
+
+                    $netplan_content .= "        - to: default\n";
+                    $netplan_content .= "          via: " . $settings['gateway'] . "\n";
                 }
+
+                // Multicast route
+                if (($settings['multicast'] ?? 'off') === 'on') {
+                    if (!$hasRoutes) {
+                        $netplan_content .= "      routes:\n";
+                        $hasRoutes = true;
+                    }
+
+                    $netplan_content .= "        - to: 224.0.0.0/4\n";
+                    $netplan_content .= "          scope: link\n";
+                }
+
                 if (!empty($settings['dns'])) {
-                    $netplan_content .= "      nameservers:\n        addresses:\n          - " . $settings['dns'] . "\n";
+                    $netplan_content .= "      nameservers:\n";
+                    $netplan_content .= "        addresses:\n";
+                    $netplan_content .= "          - " . $settings['dns'] . "\n";
                 }
                 break;
             case 'disable':
