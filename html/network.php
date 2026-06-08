@@ -163,13 +163,20 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                                         name="multicast" value="on" <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'checked' : ''; ?>>
                                     <span class="slider"></span>
                                 </div>
-                                <label for="multicast-<?php echo $selected_interface; ?>" class="switch-label">
+                                <label for="multicast-<?php echo $selected_interface; ?>" class="switch-label" id="multicast-label-<?php echo $selected_interface; ?>">
                                     <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'Enabled' : 'Disabled'; ?>
                                 </label>
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label">Configuration Method</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="method" id="disable-<?php echo $selected_interface; ?>"
+                                        value="disable" <?php echo ($interface_data[$selected_interface]['config']['method'] ?? '') === 'disable' ? 'checked' : ''; ?>>
+                                    <label class="form-check-label" for="disable-<?php echo $selected_interface; ?>">
+                                        Disable
+                                    </label>
+                                </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="method" id="dhcp-<?php echo $selected_interface; ?>"
                                         value="dhcp" <?php echo ($interface_data[$selected_interface]['config']['method'] ?? '') === 'dhcp' ? 'checked' : ''; ?>>
@@ -182,13 +189,6 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                                         value="static" <?php echo ($interface_data[$selected_interface]['config']['method'] ?? '') === 'static' ? 'checked' : ''; ?>>
                                     <label class="form-check-label" for="static-<?php echo $selected_interface; ?>">
                                         Static IP
-                                    </label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="method" id="disable-<?php echo $selected_interface; ?>"
-                                        value="disable" <?php echo ($interface_data[$selected_interface]['config']['method'] ?? '') === 'disable' ? 'checked' : ''; ?>>
-                                    <label class="form-check-label" for="disable-<?php echo $selected_interface; ?>">
-                                        Disable
                                     </label>
                                 </div>
                             </div>
@@ -260,6 +260,20 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
         button.addEventListener('click', function() {
             const interfaceName = this.getAttribute('data-interface');
             window.location.href = '?interface=' + encodeURIComponent(interfaceName);
+        });
+    });
+
+    // Multicast toggle switch functionality
+    document.querySelectorAll('.switch input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const interfaceName = this.id.split('-')[2]; // Get interface name from ID like "multicast-eth0"
+            const label = document.getElementById(`multicast-label-${interfaceName}`);
+            
+            if (this.checked) {
+                label.textContent = 'Enabled';
+            } else {
+                label.textContent = 'Disabled';
+            }
         });
     });
 </script>
