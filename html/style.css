@@ -526,9 +526,17 @@ main {
 
 /* Animation for futuristic effect */
 @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(0, 168, 255, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(0, 168, 255, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(0, 168, 255, 0); }
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 168, 255, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 168, 255, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 168, 255, 0);
+    }
 }
 
 .pulse {
@@ -545,43 +553,86 @@ main {
     backdrop-filter: blur(10px);
 }
 
-/* Interface tabs styling */
-.interface-tabs {
-    margin-bottom: 20px;
+/* Horizontal network interfaces */
+.network-interfaces-horizontal {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: flex-start;
+}
+
+.interface-card {
+    flex: 1 1 300px;
+    min-width: 300px;
+    background: rgba(10, 25, 41, 0.7);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(92, 158, 255, 0.2);
+    backdrop-filter: blur(10px);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.interface-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 30px rgba(0, 168, 255, 0.25);
+}
+
+.interface-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
     border-bottom: 1px solid rgba(92, 158, 255, 0.2);
 }
 
-.interface-tabs .nav-link {
-    color: var(--text-secondary);
-    border: none;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -1px;
-    padding: 12px 20px;
-    transition: all 0.3s ease;
-}
-
-.interface-tabs .nav-link:hover {
+.interface-header h5 {
+    margin: 0;
     color: var(--accent-blue-light);
-    border-bottom: 3px solid var(--accent-blue-light);
+    font-size: 1.2rem;
 }
 
-.interface-tabs .nav-link.active {
-    color: var(--accent-blue-light);
-    border-bottom: 3px solid var(--accent-blue-light);
-    background: transparent;
+.interface-body {
+    margin-bottom: 15px;
 }
 
-/* Interface tab content */
-.interface-tab-content {
-    padding: 20px 0;
+.interface-body p {
+    margin: 8px 0;
+    font-size: 0.9rem;
 }
 
-/* Interface settings area */
-.interface-settings {
-    background: rgba(10, 25, 41, 0.5);
-    border-radius: 12px;
-    padding: 20px;
-    margin-top: 20px;
+.interface-footer {
+    padding-top: 15px;
+    border-top: 1px solid rgba(92, 158, 255, 0.2);
+}
+
+.interface-form {
+    margin: 0;
+}
+
+.interface-form .mb-3 {
+    margin-bottom: 15px !important;
+}
+
+.interface-form .form-check {
+    margin-bottom: 10px;
+}
+
+.interface-form .form-check-label {
+    font-size: 0.9rem;
+}
+
+.interface-form .form-control {
+    background: rgba(13, 27, 45, 0.7);
+    border: 1px solid rgba(92, 158, 255, 0.3);
+    color: var(--text-primary);
+    backdrop-filter: blur(5px);
+}
+
+.interface-form .form-control:focus {
+    border-color: var(--accent-blue-light);
+    box-shadow: 0 0 10px rgba(0, 168, 255, 0.3);
 }
 
 /* Responsive adjustments */
@@ -590,13 +641,14 @@ main {
         margin-top: 120px;
         padding: 15px;
     }
-    
-    .interface-tabs .nav-link {
-        padding: 10px 15px;
-        font-size: 14px;
+
+    .network-interfaces-horizontal {
+        flex-direction: column;
+        align-items: center;
     }
-    
-    .interface-settings {
-        padding: 15px;
+
+    .interface-card {
+        width: 100%;
+        min-width: auto;
     }
 }
