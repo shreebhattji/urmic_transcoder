@@ -151,6 +151,24 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                                 <input type="hidden" name="action" value="save">
 
                                 <div class="mb-3">
+                                    <label class="form-label">Interface Name</label>
+                                    <input type="text" class="form-control" name="interface_name"
+                                        value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['interface_name'] ?? ''); ?>"
+                                        placeholder="Enter interface name">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Multicast</label>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="multicast-<?php echo $selected_interface; ?>"
+                                            name="multicast" value="on" <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'checked' : ''; ?>>
+                                        <label class="form-check-label" for="multicast-<?php echo $selected_interface; ?>">
+                                            <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'Enabled' : 'Disabled'; ?>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
                                     <label class="form-label">Configuration Method</label>
                                     <div class="form-check">
                                         <input class="form-check-input" type="radio" name="method" id="dhcp-<?php echo $selected_interface; ?>"
@@ -203,17 +221,6 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                                         <input type="text" class="form-control" name="dns"
                                             value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['dns'] ?? ''); ?>"
                                             placeholder="8.8.8.8">
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Multicast</label>
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="multicast-<?php echo $selected_interface; ?>"
-                                            name="multicast" value="on" <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'checked' : ''; ?>>
-                                        <label class="form-check-label" for="multicast-<?php echo $selected_interface; ?>">
-                                            <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'Enabled' : 'Disabled'; ?>
-                                        </label>
                                     </div>
                                 </div>
 
