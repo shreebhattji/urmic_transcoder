@@ -10,7 +10,7 @@ https://github.com/shreebhattji/Urmi/blob/main/licence.md
 include 'header.php';
 
 // Load network configuration
-$config_file = '/etc/urmi/network.json';
+$config_file = '/var/www/network.json';
 $network_config = [];
 
 if (file_exists($config_file)) {
