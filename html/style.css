@@ -596,8 +596,7 @@ main {
     justify-content: flex-start;
 }
 
-/* ... existing CSS ... */
-
+/* Network interface card styling */
 .interface-card {
     flex: 1 1 300px;
     min-width: 300px;
@@ -665,11 +664,68 @@ main {
     border: 1px solid rgba(92, 158, 255, 0.3);
     color: var(--text-primary);
     backdrop-filter: blur(5px);
+    border-radius: 8px;
+    padding: 10px 15px;
 }
 
 .interface-form .form-control:focus {
     border-color: var(--accent-blue-light);
-    box-shadow: 0 0 10px rgba(0, 168, 255, 0.3);
+    box-shadow: 0 0 0 3px rgba(0, 168, 255, 0.3);
+}
+
+/* Button styling */
+.btn-primary {
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-blue-light));
+    border: none;
+    border-radius: 8px;
+    color: white;
+    padding: 12px 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 168, 255, 0.3);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(90deg, var(--accent-blue-light), var(--accent-blue));
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 168, 255, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* Toggle switch styling */
+.form-switch .form-check-input {
+    height: 24px;
+    width: 48px;
+    border-radius: 12px;
+    background-color: rgba(92, 158, 255, 0.3);
+    border: none;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.form-switch .form-check-input:checked {
+    background-color: var(--accent-blue-light);
+}
+
+.form-switch .form-check-input::before {
+    content: '';
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    border-radius: 50%;
+    background-color: white;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.3s ease;
+}
+
+.form-switch .form-check-input:checked::before {
+    transform: translateX(24px);
 }
 
 /* Responsive adjustments */
@@ -706,5 +762,14 @@ main {
     
     .activation-buttons button {
         width: 100%;
+    }
+    
+    .input-group {
+        min-width: 250px;
+    }
+    
+    .green-btn, .red-btn {
+        width: 100%;
+        margin-bottom: 8px;
     }
 }

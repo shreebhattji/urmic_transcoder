@@ -200,18 +200,11 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
 
                                 <div class="mb-3">
                                     <label class="form-label">Multicast</label>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="multicast" id="multicast-on-<?php echo $selected_interface; ?>"
-                                            value="on" <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'checked' : ''; ?>>
-                                        <label class="form-check-label" for="multicast-on-<?php echo $selected_interface; ?>">
-                                            Enable
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="multicast" id="multicast-off-<?php echo $selected_interface; ?>"
-                                            value="off" <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'off' ? 'checked' : ''; ?>>
-                                        <label class="form-check-label" for="multicast-off-<?php echo $selected_interface; ?>">
-                                            Disable
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="multicast-<?php echo $selected_interface; ?>"
+                                            name="multicast" value="on" <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'checked' : ''; ?>>
+                                        <label class="form-check-label" for="multicast-<?php echo $selected_interface; ?>">
+                                            <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'Enabled' : 'Disabled'; ?>
                                         </label>
                                     </div>
                                 </div>
