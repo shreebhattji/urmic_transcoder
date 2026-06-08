@@ -235,9 +235,10 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
 
 <script>
     // Toggle static IP fields based on method selection
-    document.querySelectorAll('input[name^="method"]').forEach(radio => {
+    document.querySelectorAll('input[name="method"]').forEach(radio => {
         radio.addEventListener('change', function() {
-            const interfaceName = this.name.replace('method', '');
+            // Get the interface name from the radio button's ID
+            const interfaceName = this.id.split('-')[1]; // Get interface name from ID like "static-eth0"
             const staticFields = document.getElementById(`static-ip-fields-${interfaceName}`);
 
             if (this.value === 'static') {
