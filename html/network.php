@@ -88,6 +88,13 @@ function generate_netplan_config($config)
         switch ($settings['method']) {
             case 'dhcp':
                 $netplan_content .= "      dhcp4: true\n";
+                
+                // Add multicast route for DHCP interfaces
+                if (($settings['multicast'] ?? 'off') === 'on') {
+                    $netplan_content .= "      routes:\n";
+                    $netplan_content .= "        - to: 224.0.0.0/4\n";
+                    $netplan_content .= "          scope: link\n";
+                }
                 break;
             case 'static':
                 $netplan_content .= "      addresses:\n";
