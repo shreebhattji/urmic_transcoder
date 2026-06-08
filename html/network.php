@@ -31,7 +31,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'interface' => $interface,
                 'method' => $_POST['method'] ?? '',
                 'ip' => $_POST['ip'] ?? '',
-                'netmask' => $_POST['netmask'] ?? '',
                 'gateway' => $_POST['gateway'] ?? '',
                 'dns' => $_POST['dns'] ?? '',
                 'multicast' => $multicast
@@ -205,13 +204,6 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                                     <input type="text" class="form-control" name="ip"
                                         value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['ip'] ?? ''); ?>"
                                         placeholder="192.168.1.100">
-                                </div>
-
-                                <div class="input-group">
-                                    <label class="form-label mt-2">Subnet Mask</label>
-                                    <input type="text" class="form-control" name="netmask"
-                                        value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['netmask'] ?? ''); ?>"
-                                        placeholder="255.255.255.0">
                                 </div>
 
                                 <div class="input-group">
