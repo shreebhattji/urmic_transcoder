@@ -821,57 +821,111 @@ main {
         width: 100%;
         min-width: auto;
     }
-    
+
     .interface-list {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .tab-button {
         width: 100%;
         text-align: center;
     }
-    
+
     .activation-buttons {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .activation-buttons button {
         width: 100%;
     }
-    
+
     .input-group {
         min-width: 250px;
     }
-    
-    .green-btn, .red-btn {
+
+    .green-btn,
+    .red-btn {
         width: 100%;
         margin-bottom: 8px;
     }
-    
+
     .input-group.network-input {
         margin-bottom: 12px;
     }
-    
+
     .input-group.network-input input {
         padding: 10px 12px;
         font-size: 0.9rem;
     }
-    
+
     .multicast-toggle .form-check-input {
         width: 40px;
         height: 20px;
     }
-    
+
     .multicast-toggle .form-check-input::before {
         height: 14px;
         width: 14px;
         top: 3px;
         left: 3px;
     }
-    
+
     .multicast-toggle .form-check-input:checked::before {
         transform: translateX(20px);
     }
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+    margin: 10px 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked+.slider {
+    background-color: var(--accent-blue-light);
+}
+
+input:checked+.slider:before {
+    transform: translateX(26px);
+}
+
+.switch-label {
+    margin-left: 10px;
+    vertical-align: middle;
+    font-size: 0.9rem;
+    color: var(--text-primary);
 }

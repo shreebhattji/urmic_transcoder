@@ -158,13 +158,14 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
 
                             <div class="mb-3">
                                 <label class="form-label">Multicast</label>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="multicast-<?php echo $selected_interface; ?>"
+                                <div class="switch">
+                                    <input type="checkbox" id="multicast-<?php echo $selected_interface; ?>"
                                         name="multicast" value="on" <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'checked' : ''; ?>>
-                                    <label class="form-check-label" for="multicast-<?php echo $selected_interface; ?>">
-                                        <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'Enabled' : 'Disabled'; ?>
-                                    </label>
+                                    <span class="slider"></span>
                                 </div>
+                                <label for="multicast-<?php echo $selected_interface; ?>" class="switch-label">
+                                    <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'Enabled' : 'Disabled'; ?>
+                                </label>
                             </div>
 
                             <div class="mb-3">
