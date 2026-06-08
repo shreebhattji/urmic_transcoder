@@ -263,23 +263,22 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
         });
     });
 
-    // Multicast toggle switch functionality
+    // Multicast toggle switch functionality - simplified approach
     document.addEventListener('DOMContentLoaded', function() {
-        // Find all multicast toggle switches
-        const multicastSwitches = document.querySelectorAll('.switch input[type="checkbox"]');
+        // Add event listeners to all multicast checkboxes
+        const checkboxes = document.querySelectorAll('input[id^="multicast-"]');
         
-        multicastSwitches.forEach(checkbox => {
+        checkboxes.forEach(checkbox => {
             checkbox.addEventListener('change', function() {
-                // Get the interface name from the checkbox ID
-                // ID format: "multicast-eth0" -> split by "-" -> [0] = "multicast", [1] = "eth0"
-                const interfaceName = this.id.split('-')[1];
-                const label = document.getElementById(`multicast-label-${interfaceName}`);
+                // Extract interface name from ID (format: multicast-eth0)
+                const idParts = this.id.split('-');
+                const interfaceName = idParts[1]; // Get the interface name part
                 
-                if (label) {
-                    if (this.checked) {
-                        label.textContent = 'Enabled';
-                    } else {
-                        label.textContent = 'Disabled';
+                if (interfaceName) {
+                    const label = document.getElementById(`multicast-label-${interfaceName}`);
+                    if (label) {
+                        // Update label text based on checkbox state
+                        label.textContent = this.checked ? 'Enabled' : 'Disabled';
                     }
                 }
             });
