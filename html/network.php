@@ -146,14 +146,6 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                             <p><strong>MAC Address:</strong> <?php echo htmlspecialchars($interface_data[$selected_interface]['mac'] ?: 'N/A'); ?></p>
                         </div>
                         <div class="interface-footer">
-                            <!-- Activation toggle button -->
-                            <div class="activation-buttons">
-                                <button type="submit" name="action" value="toggle" 
-                                        class="btn btn-<?php echo $interface_data[$selected_interface]['status'] === 'up' ? 'warning' : 'success'; ?>">
-                                    <?php echo $interface_data[$selected_interface]['status'] === 'up' ? 'Deactivate' : 'Activate'; ?>
-                                </button>
-                            </div>
-                            
                             <form method="post" action="" class="interface-form">
                                 <input type="hidden" name="interface" value="<?php echo htmlspecialchars($selected_interface); ?>">
                                 <input type="hidden" name="action" value="save">
@@ -174,6 +166,13 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                                             Static IP
                                         </label>
                                     </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="method" id="disable-<?php echo $selected_interface; ?>"
+                                            value="disable" <?php echo ($interface_data[$selected_interface]['config']['method'] ?? '') === 'disable' ? 'checked' : ''; ?>>
+                                        <label class="form-check-label" for="disable-<?php echo $selected_interface; ?>">
+                                            Disable
+                                        </label>
+                                    </div>
                                 </div>
 
                                 <div class="mb-3" id="static-ip-fields-<?php echo $selected_interface; ?>"
@@ -192,6 +191,11 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                                     <input type="text" class="form-control" name="gateway"
                                         value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['gateway'] ?? ''); ?>"
                                         placeholder="192.168.1.1">
+
+                                    <label class="form-label mt-2">DNS</label>
+                                    <input type="text" class="form-control" name="dns"
+                                        value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['dns'] ?? ''); ?>"
+                                        placeholder="8.8.8.8">
                                 </div>
 
                                 <div class="mb-3">
