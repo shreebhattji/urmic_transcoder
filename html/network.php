@@ -177,25 +177,33 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
 
                                 <div class="mb-3" id="static-ip-fields-<?php echo $selected_interface; ?>"
                                     style="<?php echo ($interface_data[$selected_interface]['config']['method'] ?? '') === 'static' ? 'display: block;' : 'display: none;'; ?>">
-                                    <label class="form-label">IP Address</label>
-                                    <input type="text" class="form-control" name="ip"
-                                        value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['ip'] ?? ''); ?>"
-                                        placeholder="192.168.1.100">
+                                    <div class="input-group">
+                                        <label class="form-label">IP Address</label>
+                                        <input type="text" class="form-control" name="ip"
+                                            value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['ip'] ?? ''); ?>"
+                                            placeholder="192.168.1.100">
+                                    </div>
 
-                                    <label class="form-label mt-2">Netmask</label>
-                                    <input type="text" class="form-control" name="netmask"
-                                        value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['netmask'] ?? ''); ?>"
-                                        placeholder="255.255.255.0">
+                                    <div class="input-group">
+                                        <label class="form-label mt-2">Subnet Mask</label>
+                                        <input type="text" class="form-control" name="netmask"
+                                            value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['netmask'] ?? ''); ?>"
+                                            placeholder="255.255.255.0">
+                                    </div>
 
-                                    <label class="form-label mt-2">Gateway</label>
-                                    <input type="text" class="form-control" name="gateway"
-                                        value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['gateway'] ?? ''); ?>"
-                                        placeholder="192.168.1.1">
+                                    <div class="input-group">
+                                        <label class="form-label mt-2">Gateway</label>
+                                        <input type="text" class="form-control" name="gateway"
+                                            value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['gateway'] ?? ''); ?>"
+                                            placeholder="192.168.1.1">
+                                    </div>
 
-                                    <label class="form-label mt-2">DNS</label>
-                                    <input type="text" class="form-control" name="dns"
-                                        value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['dns'] ?? ''); ?>"
-                                        placeholder="8.8.8.8">
+                                    <div class="input-group">
+                                        <label class="form-label mt-2">DNS Server</label>
+                                        <input type="text" class="form-control" name="dns"
+                                            value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['dns'] ?? ''); ?>"
+                                            placeholder="8.8.8.8">
+                                    </div>
                                 </div>
 
                                 <div class="mb-3">

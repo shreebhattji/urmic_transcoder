@@ -543,6 +543,7 @@ main {
     animation: pulse 2s infinite;
 }
 
+/* Network configuration specific styles */
 .network-settings-container {
     padding: 20px;
     background: rgba(13, 27, 45, 0.7);
@@ -550,6 +551,7 @@ main {
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
     border: 1px solid rgba(92, 158, 255, 0.2);
     backdrop-filter: blur(10px);
+    margin-top: 20px;
 }
 
 .interface-tabs {
@@ -728,6 +730,81 @@ main {
     transform: translateX(24px);
 }
 
+/* Input group styling for network config */
+.input-group.network-input {
+    margin-bottom: 15px;
+}
+
+.input-group.network-input label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.input-group.network-input input {
+    width: 100%;
+    padding: 12px 15px;
+    font-size: 1rem;
+    border: 1px solid rgba(92, 158, 255, 0.3);
+    border-radius: 8px;
+    outline: none;
+    background: rgba(13, 27, 45, 0.7);
+    transition: all 0.3s ease;
+    color: var(--text-primary);
+    backdrop-filter: blur(5px);
+}
+
+.input-group.network-input input:focus {
+    border-color: var(--accent-blue-light);
+    box-shadow: 0 0 0 3px rgba(0, 168, 255, 0.3);
+}
+
+/* Multicast toggle styling */
+.multicast-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.multicast-toggle .form-check-input {
+    width: 50px;
+    height: 25px;
+    border-radius: 12px;
+    background-color: rgba(92, 158, 255, 0.3);
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.multicast-toggle .form-check-input:checked {
+    background-color: var(--accent-blue-light);
+}
+
+.multicast-toggle .form-check-input::before {
+    content: '';
+    position: absolute;
+    height: 19px;
+    width: 19px;
+    border-radius: 50%;
+    background-color: white;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.3s ease;
+}
+
+.multicast-toggle .form-check-input:checked::before {
+    transform: translateX(25px);
+}
+
+.multicast-toggle .form-check-label {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .network-settings-container {
@@ -771,5 +848,30 @@ main {
     .green-btn, .red-btn {
         width: 100%;
         margin-bottom: 8px;
+    }
+    
+    .input-group.network-input {
+        margin-bottom: 12px;
+    }
+    
+    .input-group.network-input input {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+    
+    .multicast-toggle .form-check-input {
+        width: 40px;
+        height: 20px;
+    }
+    
+    .multicast-toggle .form-check-input::before {
+        height: 14px;
+        width: 14px;
+        top: 3px;
+        left: 3px;
+    }
+    
+    .multicast-toggle .form-check-input:checked::before {
+        transform: translateX(20px);
     }
 }
