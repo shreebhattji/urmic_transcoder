@@ -1,6 +1,4 @@
-<!-- index.php -->
 <?php
-
 /*
 Urmi you happy me happy licence
 
@@ -9,326 +7,246 @@ Copyright (c) 2026 shreebhattji
 License text:
 https://github.com/shreebhattji/Urmi/blob/main/licence.md
 */
+include 'header.php';
 
-include 'header.php'; ?>
+// Load network configuration
+$config_file = '/etc/urmi/network.json';
+$network_config = [];
+
+if (file_exists($config_file)) {
+  $config_data = file_get_contents($config_file);
+  $network_config = json_decode($config_data, true);
+}
+
+// Handle form submissions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  if (isset($_POST['action'])) {
+    $interface = $_POST['interface'] ?? '';
+    $action = $_POST['action'];
+
+    if ($action === 'save') {
+      // Save configuration
+      $config = [
+        'interface' => $interface,
+        'method' => $_POST['method'] ?? '',
+        'ip' => $_POST['ip'] ?? '',
+        'netmask' => $_POST['netmask'] ?? '',
+        'gateway' => $_POST['gateway'] ?? '',
+        'dns' => $_POST['dns'] ?? '',
+        'multicast' => $_POST['multicast'] ?? 'off'
+      ];
+
+      $network_config[$interface] = $config;
+      file_put_contents($config_file, json_encode($network_config, JSON_PRETTY_PRINT));
+    } elseif ($action === 'activate') {
+      // Activate interface
+      exec("sudo ip link set $interface up", $output, $return_code);
+    } elseif ($action === 'deactivate') {
+      // Deactivate interface
+      exec("sudo ip link set $interface down", $output, $return_code);
+    }
+  }
+}
+
+// Get network interfaces excluding specific ones
+$interfaces = [];
+$output = [];
+exec('ip addr show', $output);
+
+$current_interface = null;
+$interface_data = [];
+
+foreach ($output as $line) {
+  // Match interface name
+  if (preg_match('/^\d+:\s+([a-zA-Z0-9]+):/', $line, $matches)) {
+    $current_interface = $matches[1];
+
+    // Skip interfaces we want to exclude
+    if (strpos($current_interface, 'enx') === 0) {
+      $current_interface = null;
+      continue;
+    }
+
+    if ($current_interface === 'lo') {
+      $current_interface = null;
+      continue;
+    }
+
+    // Check if interface is a bridge or docker interface
+    if (
+      strpos($current_interface, 'docker') === 0 ||
+      strpos($current_interface, 'br-') === 0 ||
+      strpos($current_interface, 'veth') === 0
+    ) {
+      $current_interface = null;
+      continue;
+    }
+
+    $interface_data[$current_interface] = [
+      'name' => $current_interface,
+      'ip' => '',
+      'mac' => '',
+      'status' => 'down',
+      'config' => $network_config[$current_interface] ?? null
+    ];
+  }
+
+  // Extract IP address
+  if ($current_interface && preg_match('/inet\s+(\d+\.\d+\.\d+\.\d+)/', $line, $matches)) {
+    $interface_data[$current_interface]['ip'] = $matches[1];
+  }
+
+  // Extract MAC address
+  if ($current_interface && preg_match('/link\/ether\s+([a-f0-9:]+)/', $line, $matches)) {
+    $interface_data[$current_interface]['mac'] = $matches[1];
+  }
+
+  // Check if interface is up
+  if ($current_interface && strpos($line, 'state UP') !== false) {
+    $interface_data[$current_interface]['status'] = 'up';
+  }
+}
+
+// Get selected interface from GET parameter or first interface
+$selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? null;
+?>
 
 <div class="containerindex">
   <div class="grid">
-    <div class="card">
-      <h3><i class="fas fa-microchip"></i> CPU (%)</h3>
-      <div class="chart-wrap"><canvas id="cpuChart"></canvas></div>
-    </div>
-    <div class="card">
-      <h3><i class="fas fa-memory"></i> RAM (%)</h3>
-      <div class="chart-wrap"><canvas id="ramChart"></canvas></div>
-    </div>
     <div class="card wide">
-      <h3><i class="fas fa-network-wired"></i> Network (KB/s)</h3>
-      <div class="chart-wrap"><canvas id="netChart"></canvas></div>
-    </div>
-    <div class="card wide">
-      <h3><i class="fas fa-hdd"></i> Disk I/O (KB/s) & Disk %</h3>
-      <div class="chart-wrap"><canvas id="diskChart"></canvas></div>
-    </div>
-  </div>
+      <h3>Network Configuration</h3>
 
-  <div style="margin-top:12px; color:#a9c7ff; display:flex; justify-content:space-between; font-size:14px;">
-    <div>Last update: <span id="lastUpdate" class="pulse">—</span></div>
-    <div>CPU: <span id="lastCpu" class="pulse">—</span>% · RAM: <span id="lastRam" class="pulse">—</span>% · In: <span id="lastIn" class="pulse">—</span>KB/s ·
-      Out: <span id="lastOut" class="pulse">—</span>KB/s</div>
+      <!-- Interface selection -->
+      <div class="interface-selector">
+        <h4>Select Interface:</h4>
+        <div class="interface-list">
+          <?php foreach ($interface_data as $interface): ?>
+            <a href="?interface=<?php echo urlencode($interface['name']); ?>"
+              class="btn <?php echo $selected_interface === $interface['name'] ? 'btn-primary' : 'btn-outline-primary'; ?>">
+              <?php echo htmlspecialchars($interface['name']); ?>
+            </a>
+          <?php endforeach; ?>
+        </div>
+      </div>
+
+      <!-- Main container for network settings -->
+      <div class="network-settings-container">
+        <?php if ($selected_interface && isset($interface_data[$selected_interface])): ?>
+          <div class="interface-card">
+            <div class="interface-header">
+              <h5>Interface Settings</h5>
+              <span class="badge bg-<?php echo $interface_data[$selected_interface]['status'] === 'up' ? 'success' : 'secondary'; ?>">
+                <?php echo htmlspecialchars($interface_data[$selected_interface]['status']); ?>
+              </span>
+            </div>
+            <div class="interface-body">
+              <p><strong>IP Address:</strong> <?php echo htmlspecialchars($interface_data[$selected_interface]['ip'] ?: 'N/A'); ?></p>
+              <p><strong>MAC Address:</strong> <?php echo htmlspecialchars($interface_data[$selected_interface]['mac'] ?: 'N/A'); ?></p>
+            </div>
+            <div class="interface-footer">
+              <form method="post" action="" class="interface-form">
+                <input type="hidden" name="interface" value="<?php echo htmlspecialchars($selected_interface); ?>">
+                <input type="hidden" name="action" value="save">
+
+                <div class="mb-3">
+                  <label class="form-label">Configuration Method</label>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="method" id="dhcp-<?php echo $selected_interface; ?>"
+                      value="dhcp" <?php echo ($interface_data[$selected_interface]['config']['method'] ?? '') === 'dhcp' ? 'checked' : ''; ?>>
+                    <label class="form-check-label" for="dhcp-<?php echo $selected_interface; ?>">
+                      DHCP
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="method" id="static-<?php echo $selected_interface; ?>"
+                      value="static" <?php echo ($interface_data[$selected_interface]['config']['method'] ?? '') === 'static' ? 'checked' : ''; ?>>
+                    <label class="form-check-label" for="static-<?php echo $selected_interface; ?>">
+                      Static IP
+                    </label>
+                  </div>
+                </div>
+
+                <div class="mb-3" id="static-ip-fields-<?php echo $selected_interface; ?>"
+                  style="<?php echo ($interface_data[$selected_interface]['config']['method'] ?? '') === 'static' ? 'display: block;' : 'display: none;'; ?>">
+                  <label class="form-label">IP Address</label>
+                  <input type="text" class="form-control" name="ip"
+                    value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['ip'] ?? ''); ?>"
+                    placeholder="192.168.1.100">
+
+                  <label class="form-label mt-2">Netmask</label>
+                  <input type="text" class="form-control" name="netmask"
+                    value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['netmask'] ?? ''); ?>"
+                    placeholder="255.255.255.0">
+
+                  <label class="form-label mt-2">Gateway</label>
+                  <input type="text" class="form-control" name="gateway"
+                    value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['gateway'] ?? ''); ?>"
+                    placeholder="192.168.1.1">
+
+                  <label class="form-label mt-2">DNS Server</label>
+                  <input type="text" class="form-control" name="dns"
+                    value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['dns'] ?? ''); ?>"
+                    placeholder="8.8.8.8">
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Multicast</label>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="multicast" id="multicast-on-<?php echo $selected_interface; ?>"
+                      value="on" <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on' ? 'checked' : ''; ?>>
+                    <label class="form-check-label" for="multicast-on-<?php echo $selected_interface; ?>">
+                      Enable
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="multicast" id="multicast-off-<?php echo $selected_interface; ?>"
+                      value="off" <?php echo ($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'off' ? 'checked' : ''; ?>>
+                    <label class="form-check-label" for="multicast-off-<?php echo $selected_interface; ?>">
+                      Disable
+                    </label>
+                  </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                  <button type="submit" class="btn btn-primary">Save Configuration</button>
+                  <div>
+                    <button type="submit" name="action" value="activate"
+                      class="btn btn-success <?php echo $interface_data[$selected_interface]['status'] === 'up' ? 'disabled' : ''; ?>">
+                      Activate
+                    </button>
+                    <button type="submit" name="action" value="deactivate"
+                      class="btn btn-danger <?php echo $interface_data[$selected_interface]['status'] === 'down' ? 'disabled' : ''; ?>">
+                      Deactivate
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        <?php else: ?>
+          <div class="alert alert-info">
+            No network interfaces found or selected.
+          </div>
+        <?php endif; ?>
+      </div>
+    </div>
   </div>
-  <br>
-  <br>
-  <br>
-  <br>
 </div>
+
 <script>
-  const POLL_MS = 1000;
-  const JSON_URL = "metrics.json";
+  // Toggle static IP fields based on method selection
+  document.querySelectorAll('input[name^="method"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      const interfaceName = this.name.replace('method', '');
+      const staticFields = document.getElementById(`static-ip-fields-${interfaceName}`);
 
-  function toKB(v) {
-    return Math.round(v / 1024);
-  }
-
-  const cpuChart = new Chart(document.getElementById('cpuChart').getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [{
-        label: 'CPU %',
-        data: [],
-        fill: false,
-        borderColor: '#00a8ff',
-        backgroundColor: 'rgba(0, 168, 255, 0.1)',
-        tension: 0.4,
-        pointRadius: 0,
-        pointHoverRadius: 6
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          min: 0,
-          max: 100,
-          grid: {
-            color: 'rgba(92, 158, 255, 0.1)'
-          },
-          ticks: {
-            color: '#a9c7ff'
-          }
-        },
-        x: {
-          grid: {
-            color: 'rgba(92, 158, 255, 0.1)'
-          },
-          ticks: {
-            color: '#a9c7ff'
-          }
-        }
-      },
-      plugins: {
-        legend: {
-          labels: {
-            color: '#a9c7ff'
-          }
-        }
+      if (this.value === 'static') {
+        staticFields.style.display = 'block';
+      } else {
+        staticFields.style.display = 'none';
       }
-    }
+    });
   });
-  
-  const ramChart = new Chart(document.getElementById('ramChart').getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [{
-        label: 'RAM %',
-        data: [],
-        fill: false,
-        borderColor: '#00b8ff',
-        backgroundColor: 'rgba(0, 184, 255, 0.1)',
-        tension: 0.4,
-        pointRadius: 0,
-        pointHoverRadius: 6
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          min: 0,
-          max: 100,
-          grid: {
-            color: 'rgba(92, 158, 255, 0.1)'
-          },
-          ticks: {
-            color: '#a9c7ff'
-          }
-        },
-        x: {
-          grid: {
-            color: 'rgba(92, 158, 255, 0.1)'
-          },
-          ticks: {
-            color: '#a9c7ff'
-          }
-        }
-      },
-      plugins: {
-        legend: {
-          labels: {
-            color: '#a9c7ff'
-          }
-        }
-      }
-    }
-  });
-  
-  const netChart = new Chart(document.getElementById('netChart').getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [{
-          label: 'Net In (KB/s)',
-          data: [],
-          fill: false,
-          borderColor: '#00a8ff',
-          backgroundColor: 'rgba(0, 168, 255, 0.1)',
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 6
-        },
-        {
-          label: 'Net Out (KB/s)',
-          data: [],
-          fill: false,
-          borderColor: '#00b8ff',
-          backgroundColor: 'rgba(0, 184, 255, 0.1)',
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 6
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          beginAtZero: true,
-          grid: {
-            color: 'rgba(92, 158, 255, 0.1)'
-          },
-          ticks: {
-            color: '#a9c7ff'
-          }
-        },
-        x: {
-          grid: {
-            color: 'rgba(92, 158, 255, 0.1)'
-          },
-          ticks: {
-            color: '#a9c7ff'
-          }
-        }
-      },
-      plugins: {
-        legend: {
-          labels: {
-            color: '#a9c7ff'
-          }
-        }
-      }
-    }
-  });
-  
-  const diskChart = new Chart(document.getElementById('diskChart').getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [{
-          label: 'Disk Read (KB/s)',
-          data: [],
-          fill: false,
-          borderColor: '#00a8ff',
-          backgroundColor: 'rgba(0, 168, 255, 0.1)',
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 6
-        },
-        {
-          label: 'Disk Write (KB/s)',
-          data: [],
-          fill: false,
-          borderColor: '#00b8ff',
-          backgroundColor: 'rgba(0, 184, 255, 0.1)',
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 6
-        },
-        {
-          label: 'Disk %',
-          data: [],
-          yAxisID: 'percent',
-          fill: false,
-          borderColor: '#00e0ff',
-          backgroundColor: 'rgba(0, 224, 255, 0.1)',
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 6
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          position: 'left',
-          beginAtZero: true,
-          grid: {
-            color: 'rgba(92, 158, 255, 0.1)'
-          },
-          ticks: {
-            color: '#a9c7ff'
-          }
-        },
-        percent: {
-          position: 'right',
-          min: 0,
-          max: 100,
-          grid: {
-            display: false
-          },
-          ticks: {
-            color: '#a9c7ff',
-            callback: v => v + '%'
-          }
-        },
-        x: {
-          grid: {
-            color: 'rgba(92, 158, 255, 0.1)'
-          },
-          ticks: {
-            color: '#a9c7ff'
-          }
-        }
-      },
-      plugins: {
-        legend: {
-          labels: {
-            color: '#a9c7ff'
-          }
-        }
-      }
-    }
-  });
-
-  async function update() {
-    try {
-      const res = await fetch(JSON_URL + "?_=" + Date.now(), {
-        cache: 'no-store'
-      });
-      if (!res.ok) throw new Error('fetch fail ' + res.status);
-      const j = await res.json();
-
-      const labels = j.timestamps.map(t => new Date(t).toLocaleTimeString());
-      cpuChart.data.labels = labels;
-      cpuChart.data.datasets[0].data = j.cpu_percent;
-
-      ramChart.data.labels = labels;
-      ramChart.data.datasets[0].data = j.ram_percent;
-
-      netChart.data.labels = labels;
-      netChart.data.datasets[0].data = j.net_in_Bps.map(toKB);
-      netChart.data.datasets[1].data = j.net_out_Bps.map(toKB);
-
-      diskChart.data.labels = labels;
-      diskChart.data.datasets[0].data = j.disk_read_Bps.map(toKB);
-      diskChart.data.datasets[1].data = j.disk_write_Bps.map(toKB);
-      diskChart.data.datasets[2].data = j.disk_percent;
-
-      cpuChart.update();
-      ramChart.update();
-      netChart.update();
-      diskChart.update();
-
-      const last = labels.length - 1;
-      if (last >= 0) {
-        document.getElementById('lastUpdate').textContent = labels[last];
-        document.getElementById('lastCpu').textContent = j.cpu_percent[last];
-        document.getElementById('lastRam').textContent = j.ram_percent[last];
-        document.getElementById('lastIn').textContent = toKB(j.net_in_Bps[last]);
-        document.getElementById('lastOut').textContent = toKB(j.net_out_Bps[last]);
-      }
-    } catch (e) {
-      console.error('update failed', e);
-    }
-  }
-
-  setInterval(update, POLL_MS);
-  update();
 </script>
-<?php include 'footer.php'; ?>
+
+<?php include 'footer.php' ?>
