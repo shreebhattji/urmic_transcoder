@@ -877,12 +877,19 @@ main {
     }
 }
 
+.switch-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
 .switch {
     position: relative;
     display: inline-block;
     width: 50px;
     height: 24px;
-    margin: 10px 0;
+    margin: 0;
 }
 
 .switch input {
@@ -915,16 +922,16 @@ main {
     border-radius: 50%;
 }
 
-input:checked + .slider {
+input:checked+.slider {
     background-color: var(--accent-blue-light);
 }
 
-input:checked + .slider:before {
+input:checked+.slider:before {
     transform: translateX(26px);
 }
 
 .switch-label {
-    margin-left: 10px;
+    margin: 0;
     vertical-align: middle;
     font-size: 0.9rem;
     color: var(--text-primary);

@@ -158,17 +158,19 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
 
                             <div class="mb-3">
                                 <label class="form-label">Multicast</label>
-                                <div class="form-check form-switch">
-                                    <input
-                                        class="form-check-input multicast-toggle"
-                                        type="checkbox"
-                                        id="multicast-<?php echo $selected_interface; ?>"
-                                        name="multicast"
-                                        value="on"
-                                        <?php echo (($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on') ? 'checked' : ''; ?>>
-                                    <label class="form-check-label" for="multicast-<?php echo $selected_interface; ?>">
-                                        <?php echo (($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on') ? 'Enabled' : 'Disabled'; ?>
+                                <div class="switch-container">
+                                    <label class="switch">
+                                        <input
+                                            type="checkbox"
+                                            class="multicast-toggle"
+                                            name="multicast"
+                                            value="on"
+                                            <?php echo (($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on') ? 'checked' : ''; ?>>
+                                        <span class="slider"></span>
                                     </label>
+                                    <span class="switch-label">
+                                        <?php echo (($interface_data[$selected_interface]['config']['multicast'] ?? 'off') === 'on') ? 'Enabled' : 'Disabled'; ?>
+                                    </span>
                                 </div>
                             </div>
 
@@ -264,8 +266,8 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.multicast-toggle').forEach(function(checkbox) {
             checkbox.addEventListener('change', function() {
-                const interfaceName = this.id.replace('multicast-', '');
-                const label = this.nextElementSibling; // Get the label element
+                const switchContainer = this.closest('.switch-container');
+                const label = switchContainer.querySelector('.switch-label');
                 
                 if (label) {
                     label.textContent = this.checked ? 'Enabled' : 'Disabled';
