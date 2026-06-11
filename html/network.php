@@ -97,8 +97,14 @@ function generate_netplan_config($config)
                 }
                 break;
             case 'static':
+                // Ensure IP address has subnet mask
+                $ip = $settings['ip'] ?? '';
+                if (!empty($ip) && strpos($ip, '/') === false) {
+                    $ip .= '/24';
+                }
+                
                 $netplan_content .= "      addresses:\n";
-                $netplan_content .= "        - " . $settings['ip'] . "/24\n";
+                $netplan_content .= "        - $ip\n";
 
                 $hasRoutes = false;
 
@@ -124,6 +130,7 @@ function generate_netplan_config($config)
                     $netplan_content .= "          scope: link\n";
                 }
 
+                // DNS servers (optional)
                 if (!empty($settings['dns'])) {
                     $netplan_content .= "      nameservers:\n";
                     $netplan_content .= "        addresses:\n";
@@ -315,14 +322,14 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                                 </div>
 
                                 <div class="input-group">
-                                    <label class="form-label mt-2">Gateway</label>
+                                    <label class="form-label mt-2">Gateway (Optional)</label>
                                     <input type="text" class="form-control" name="gateway"
                                         value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['gateway'] ?? ''); ?>"
                                         placeholder="192.168.1.1">
                                 </div>
 
                                 <div class="input-group">
-                                    <label class="form-label mt-2">DNS Server</label>
+                                    <label class="form-label mt-2">DNS Server (Optional)</label>
                                     <input type="text" class="form-control" name="dns"
                                         value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['dns'] ?? ''); ?>"
                                         placeholder="8.8.8.8">
