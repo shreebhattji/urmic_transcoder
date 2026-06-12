@@ -88,7 +88,7 @@ function generate_netplan_config($config)
         switch ($settings['method']) {
             case 'dhcp':
                 $netplan_content .= "      dhcp4: true\n";
-                
+
                 // Add multicast route for DHCP interfaces
                 if (($settings['multicast'] ?? 'off') === 'on') {
                     $netplan_content .= "      routes:\n";
@@ -102,7 +102,7 @@ function generate_netplan_config($config)
                 if (!empty($ip) && strpos($ip, '/') === false) {
                     $ip .= '/24';
                 }
-                
+
                 $netplan_content .= "      addresses:\n";
                 $netplan_content .= "        - $ip\n";
 
@@ -154,13 +154,15 @@ function generate_netplan_config($config)
     // Run netplan try to validate configuration
     exec('sudo cp /var/www/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml', $output, $return_code);
     exec("sudo netplan generate 2>&1", $out, $return_code);
-    
+
     if ($return_code !==  0) {
+        error_log("This is my custom log message!");
         if (file_exists($backup_file)) {
             exec('sudo cp /var/www/50-cloud-init.yaml_backup /etc/netplan/50-cloud-init.yaml', $output, $return_code);
             exec('sudo netplan apply', $output, $return_code);
         }
-    }
+    } else
+        exec('sudo netplan apply', $output, $return_code);
 }
 
 // Get network interfaces excluding specific ones

@@ -430,69 +430,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 }
 
 ?>
-<style>
-    body {
-        font-family: Arial;
-        padding: 20px;
-    }
-
-    button {
-        padding: 6px 12px;
-        cursor: pointer;
-    }
-
-    .restart-btn {
-        background: #ffaa00;
-    }
-
-    .delete-btn {
-        background: #b40000;
-        color: white;
-    }
-
-    .edit-btn {
-        background: #0066cc;
-        color: white;
-    }
-
-    #popup {
-        display: none;
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: #fff;
-        padding: 20px;
-        border: 1px solid #333;
-        width: 350px;
-    }
-
-    #overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.5);
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-    }
-
-    th,
-    td {
-        border: 1px solid #ccc;
-        padding: 10px;
-    }
-
-    input,
-    select {
-        width: 100%;
-        padding: 6px;
-        margin-bottom: 10px;
-    }
-</style>
 
 <div class="containerindex">
     <div class="grid">
