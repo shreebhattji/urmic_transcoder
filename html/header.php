@@ -51,6 +51,3 @@ include 'static.php';
             <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </nav>
     </header>
-</body>
-
-</html>

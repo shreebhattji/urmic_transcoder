@@ -181,7 +181,7 @@ main {
     justify-content: center;
     color: var(--text-primary);
     font-size: 17px;
-    z-index: 1001;
+    z-index: 1003; /* Higher than popup */
     border-bottom: 1px solid rgba(92, 158, 255, 0.2);
     background: rgba(10, 25, 41, 0.95);
     backdrop-filter: blur(10px);
@@ -199,46 +199,20 @@ main {
     justify-content: center;
     color: var(--text-primary);
     font-size: 14px;
-    z-index: 1001;
+    z-index: 1002; /* Higher than popup but below top-header-1 */
     border-bottom: 1px solid rgba(92, 158, 255, 0.2);
     background: rgba(10, 25, 41, 0.95);
     backdrop-filter: blur(10px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.top-header-1 {
-    top: 0;
-    background: linear-gradient(90deg, #0a1929, #0c1424);
-    font-size: 20px;
-    font-weight: 600;
-    letter-spacing: 1px;
-}
-
-.top-header-2 {
-    position: fixed;
-    top: 50px;
-    left: 0;
-    right: 0;
-    height: var(--footer-h, 73px);
+.top-header-2 nav {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 48px;
-    margin-bottom: 57px;
-    background: linear-gradient(90deg, #0a1929, #0c1424);
-    color: var(--text-primary);
-    font-weight: 500;
-    font-size: 15px;
-    letter-spacing: 0.4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    border-bottom: 1px solid rgba(92, 158, 255, 0.2);
-    z-index: 999;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
+    justify-content: center;
+    gap: 28px;
 }
 
 .top-header-2 nav a {
-    margin-left: 28px;
     color: var(--text-primary);
     text-decoration: none;
     transition: all 0.3s ease;
@@ -271,7 +245,7 @@ main {
     height: var(--footer-h, 73px);
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     padding: 0 48px;
     margin-bottom: 57px;
     background: linear-gradient(90deg, #0a1929, #0c1424);
@@ -281,13 +255,18 @@ main {
     letter-spacing: 0.4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     border-bottom: 1px solid rgba(92, 158, 255, 0.2);
-    z-index: 999;
+    z-index: 1001; /* Lower than popup */
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
 }
 
+.site-header nav {
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+}
+
 .site-header nav a {
-    margin-left: 28px;
     color: var(--text-primary);
     text-decoration: none;
     transition: all 0.3s ease;
@@ -943,24 +922,30 @@ input:checked+.slider:before {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: #fff;
-    padding: 20px;
-    border: 1px solid #333;
+    background: var(--card-bg);
+    padding: 25px;
+    border: 1px solid var(--card-border);
     width: 350px;
     max-width: 90vw;
     max-height: 90vh;
     overflow-y: auto;
-    z-index: 1000;
-    border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    z-index: 1007; /* Increased z-index to be above header */
+    border-radius: 14px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(92, 158, 255, 0.3);
+    background: rgba(13, 27, 45, 0.95);
+    border: 1px solid rgba(92, 158, 255, 0.3);
 }
 
 #overlay {
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 999;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1006; /* Lower than popup but higher than other elements */
+    width: 100%;
+    height: 100%;
 }
 
 /* Ensure the popup content is properly centered */
@@ -976,6 +961,8 @@ input:checked+.slider:before {
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 #popup button {
@@ -984,6 +971,8 @@ input:checked+.slider:before {
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    width: calc(50% - 10px);
+    box-sizing: border-box;
 }
 
 #popup button#saveBtn {
