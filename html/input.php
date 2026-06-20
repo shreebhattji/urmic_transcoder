@@ -270,6 +270,7 @@ foreach ($data as $k => $d) {
 }
 file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
+// Process POST requests
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     switch ($_POST["action"]) {
         case "add":
@@ -315,7 +316,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 exec("sudo systemctl enable encoder@{$new["id"]}");
                 exec("sudo systemctl restart encoder@{$new["id"]}");
             }
-            echo "OK";
+            // Redirect to refresh page after adding
+            header("Location: " . $_SERVER["PHP_SELF"]);
             exit;
             break;
         case "delete":
@@ -333,17 +335,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             if (file_exists("/var/www/encoder/$id.sh")) unlink("/var/www/encoder/$id.sh");
 
-            echo "OK";
+            // Redirect to refresh page after deleting
+            header("Location: " . $_SERVER["PHP_SELF"]);
             exit;
             break;
         case "edit":
-
             $id = intval($_POST["id"]);
             $newData = [];
 
             foreach ($data as $row) {
                 if ($row["id"] == $id) {
-
                     $row = [
                         "id" => $id,
                         "service_name" => $_POST["service_name"],
@@ -392,26 +393,45 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
 
             file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
-            echo "OK";
+            // Redirect to refresh page after editing
+            header("Location: " . $_SERVER["PHP_SELF"]);
             exit;
             break;
         case "restart":
             $id = intval($_POST["id"]);
             exec("sudo systemctl restart encoder@$id");
-            echo "OK";
+            // Redirect to refresh page after restart
+            header("Location: " . $_SERVER["PHP_SELF"]);
             exit;
             break;
         case "start_all":
             all_service_start();
+            // Redirect to refresh page after start_all
+            header("Location: " . $_SERVER["PHP_SELF"]);
+            exit;
             break;
         case "stop_all":
             all_service_stop();
+            // Redirect to refresh page after stop_all
+            header("Location: " . $_SERVER["PHP_SELF"]);
+            exit;
             break;
         case "update_all":
             all_service_update();
+            // Redirect to refresh page after update_all
+            header("Location: " . $_SERVER["PHP_SELF"]);
+            exit;
             break;
     }
 }
+
+// Reload data after processing POST
+$data = json_decode(file_get_contents($jsonFile), true);
+foreach ($data as $k => $d) {
+    if (!isset($d["service_name"])) $data[$k]["service_name"] = "";
+    if (!isset($d["volume"])) $data[$k]["volume"] = "0";
+}
+file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
 ?>
 
@@ -431,215 +451,263 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <input type="hidden" name="action" id="action">
             </form>
         </div>
-        <table>
-            <tr>
-                <th>No</th>
-                <th>ID</th>
-                <th>Service Name</th>
-                <th>Input</th>
-                <th>Output</th>
-                <th>Video</th>
-                <th>Audio</th>
-                <th>Resolution</th>
-                <th>V-Bitrate</th>
-                <th>A-Bitrate</th>
-                <th>Volume (dB)</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-            <?php $i = 1; ?>
-            <?php foreach ($data as $row): ?>
-                <tr>
-                    <td><?= $i++ ?></td>
-                    <td><?= $row['id'] ?></td>
-                    <td><?= $row["service_name"] ?></td>
-                    <td><?= $row["input_udp"] ?></td>
-                    <td><?= $row["output_udp"] ?></td>
-                    <td><?= $row["video_format"] ?></td>
-                    <td><?= $row["audio_format"] ?></td>
-                    <td><?= $row["resolution"] ?></td>
-                    <td><?= $row["video_bitrate"] ?></td>
-                    <td><?= $row["audio_bitrate"] ?></td>
-                    <td><?= $row["volume"] ?> dB</td>
-                    <td><?= $row["service"] ?></td>
 
-                    <td style="margin-top:3px;">
-                        <button class="edit-btn" onclick='openEditPopup(<?= json_encode($row) ?>)'>Edit</button>
-                        <button class="restart-btn" onclick="restartService(<?= $row['id'] ?>)">Restart</button>
-                        <button class="delete-btn" onclick="deleteService(<?= $row['id'] ?>)">Delete</button>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        </table>
+        <!-- Service Table -->
+        <div class="table-container">
+            <table class="service-table">
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>ID</th>
+                        <th>Service Name</th>
+                        <th>Input</th>
+                        <th>Output</th>
+                        <th>Video</th>
+                        <th>Audio</th>
+                        <th>Resolution</th>
+                        <th>V-Bitrate</th>
+                        <th>A-Bitrate</th>
+                        <th>Volume (dB)</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $i = 1; ?>
+                    <?php foreach ($data as $row): ?>
+                        <tr>
+                            <td><?= $i++ ?></td>
+                            <td><?= $row['id'] ?></td>
+                            <td><?= $row["service_name"] ?></td>
+                            <td><?= $row["input_udp"] ?></td>
+                            <td><?= $row["output_udp"] ?></td>
+                            <td><?= $row["video_format"] ?></td>
+                            <td><?= $row["audio_format"] ?></td>
+                            <td><?= $row["resolution"] ?></td>
+                            <td><?= $row["video_bitrate"] ?></td>
+                            <td><?= $row["audio_bitrate"] ?></td>
+                            <td><?= $row["volume"] ?> dB</td>
+                            <td><?= $row["service"] ?></td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="edit-btn" onclick='openEditPopup(<?= json_encode($row) ?>)'>Edit</button>
+                                    <button class="restart-btn" onclick="restartService(<?= $row['id'] ?>)">Restart</button>
+                                    <button class="delete-btn" onclick="deleteService(<?= $row['id'] ?>)">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
         <!-- POPUP -->
         <div id="overlay"></div>
-        <div id="popup">
-            <h3 id="popup_title">Add Service</h3>
+    </div>
+</div>
+<div id="popup">
+    <h3 id="popup_title">Add Service</h3>
 
-            <input type="hidden" id="service_id">
+    <input type="hidden" id="service_id">
 
-            <input type="text" id="service_name" placeholder="Service Name">
+    <input type="text" id="service_name" placeholder="Service Name">
 
-            <input type="text" id="in_udp" placeholder="Input UDP">
-            <input type="text" id="out_udp" placeholder="Output UDP">
+    <input type="text" id="in_udp" placeholder="Input UDP">
+    <input type="text" id="out_udp" placeholder="Output UDP">
 
-            <select id="video_format">
-                <option value="mpeg2video" selected>MPEG2</option>
-            </select>
+    <select id="video_format">
+        <option value="mpeg2video" selected>MPEG2</option>
+    </select>
 
-            <select id="audio_format">
-                <option value="mp2" selected>MP2</option>
-            </select>
+    <select id="audio_format">
+        <option value="mp2" selected>MP2</option>
+    </select>
 
-            <select id="resolution">
-                <option value="720x480" selected>720x480</option>
-                <option value="1280x720">1280x720</option>
-                <option value="1920x1080">1920x1080</option>
-            </select>
+    <select id="resolution">
+        <option value="720x480" selected>720x480</option>
+        <option value="1280x720">1280x720</option>
+        <option value="1920x1080">1920x1080</option>
+    </select>
 
-            <input type="number" id="video_bitrate" placeholder="Video Bitrate (kbps)" value="2048">
-            <input type="number" id="audio_bitrate" placeholder="Audio Bitrate (kbps)" value="128">
-            
-           <select id="volume">
-                <option value="-4">-4 dB</option>
-                <option value="-3">-3 dB</option>
-                <option value="-2">-2 dB</option>
-                <option value="-1">-1 dB</option>
-                <option value="0">0 dB</option>
-                <option value="1">1 dB</option>
-                <option value="2">2 dB</option>
-                <option value="3">3 dB</option>
-                <option value="4">4 dB</option>
-                <option value="5">5 dB</option>
-                <option value="10">10 dB</option>
-                <option value="12">12 dB</option>
-                <option value="15">15 dB</option>
-            </select>
-            
-            <select id="service_status">
-                <option value="enable">Enable</option>
-                <option value="disable">Disable</option>
-            </select>
+    <input type="number" id="video_bitrate" placeholder="Video Bitrate (kbps)" value="2048">
+    <input type="number" id="audio_bitrate" placeholder="Audio Bitrate (kbps)" value="128">
 
-            <div style="text-align: center; margin-top: 15px;">
-                <button id="saveBtn" onclick="saveService()">Save</button>
-                <button type="button" onclick="closePopup()">Cancel</button>
-            </div>
-        </div>
+    <select id="volume">
+        <option value="-4">-4 dB</option>
+        <option value="-3">-3 dB</option>
+        <option value="-2">-2 dB</option>
+        <option value="-1">-1 dB</option>
+        <option value="0">0 dB</option>
+        <option value="1">1 dB</option>
+        <option value="2">2 dB</option>
+        <option value="3">3 dB</option>
+        <option value="4">4 dB</option>
+        <option value="5">5 dB</option>
+        <option value="10">10 dB</option>
+        <option value="12">12 dB</option>
+        <option value="15">15 dB</option>
+    </select>
+
+    <select id="service_status">
+        <option value="enable">Enable</option>
+        <option value="disable">Disable</option>
+    </select>
+
+    <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+        <button id="saveBtn">Save</button>
+        <button type="button" id="cancelBtn">Cancel</button>
     </div>
 </div>
 
 <script>
-function openAddPopup() {
-    document.getElementById('popup').style.display = 'block';
-    document.getElementById('overlay').style.display = 'block';
-    document.getElementById('popup_title').textContent = 'Add Service';
-    document.getElementById('service_id').value = '';
-    document.getElementById('service_name').value = '';
-    document.getElementById('in_udp').value = '';
-    document.getElementById('out_udp').value = '';
-    document.getElementById('video_format').value = 'mpeg2video';
-    document.getElementById('audio_format').value = 'mp2';
-    document.getElementById('resolution').value = '720x480';
-    document.getElementById('video_bitrate').value = '2048';
-    document.getElementById('audio_bitrate').value = '128';
-    document.getElementById('volume').value = '0';
-    document.getElementById('service_status').value = 'enable';
-}
+    function openAddPopup() {
+        document.getElementById('popup_title').textContent = 'Add Service';
+        document.getElementById('service_id').value = '';
+        document.getElementById('service_name').value = '';
+        document.getElementById('in_udp').value = '';
+        document.getElementById('out_udp').value = '';
+        document.getElementById('video_format').value = 'mpeg2video';
+        document.getElementById('audio_format').value = 'mp2';
+        document.getElementById('resolution').value = '720x480';
+        document.getElementById('video_bitrate').value = '2048';
+        document.getElementById('audio_bitrate').value = '128';
+        document.getElementById('volume').value = '0';
+        document.getElementById('service_status').value = 'enable';
 
-function openEditPopup(service) {
-    document.getElementById('popup').style.display = 'block';
-    document.getElementById('overlay').style.display = 'block';
-    document.getElementById('popup_title').textContent = 'Edit Service';
-    document.getElementById('service_id').value = service.id;
-    document.getElementById('service_name').value = service.service_name;
-    document.getElementById('in_udp').value = service.input_udp;
-    document.getElementById('out_udp').value = service.output_udp;
-    document.getElementById('video_format').value = service.video_format;
-    document.getElementById('audio_format').value = service.audio_format;
-    document.getElementById('resolution').value = service.resolution;
-    document.getElementById('video_bitrate').value = service.video_bitrate;
-    document.getElementById('audio_bitrate').value = service.audio_bitrate;
-    document.getElementById('volume').value = service.volume;
-    document.getElementById('service_status').value = service.service === 'enable' ? 'enable' : 'disable';
-}
-
-function closePopup() {
-    document.getElementById('popup').style.display = 'none';
-    document.getElementById('overlay').style.display = 'none';
-}
-
-function saveService() {
-    // Get form values
-    const id = document.getElementById('service_id').value;
-    const service_name = document.getElementById('service_name').value;
-    const input_udp = document.getElementById('in_udp').value;
-    const output_udp = document.getElementById('out_udp').value;
-    const video_format = document.getElementById('video_format').value;
-    const audio_format = document.getElementById('audio_format').value;
-    const resolution = document.getElementById('resolution').value;
-    const video_bitrate = document.getElementById('video_bitrate').value;
-    const audio_bitrate = document.getElementById('audio_bitrate').value;
-    const volume = document.getElementById('volume').value;
-    const service_status = document.getElementById('service_status').value;
-    
-    // Create service object
-    const service = {
-        id: id,
-        service_name: service_name,
-        input_udp: input_udp,
-        output_udp: output_udp,
-        video_format: video_format,
-        audio_format: audio_format,
-        resolution: resolution,
-        video_bitrate: video_bitrate,
-        audio_bitrate: audio_bitrate,
-        volume: volume,
-        service: service_status
-    };
-    
-    // In a real implementation, you would send this to the server
-    console.log('Saving service:', service);
-    closePopup();
-}
-
-// Close popup when clicking outside
-document.getElementById('overlay').addEventListener('click', closePopup);
-
-// Close popup with Escape key
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        closePopup();
+        document.getElementById('popup').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
     }
-});
 
-// Add event listeners to buttons
-document.addEventListener('DOMContentLoaded', function() {
-    // Add event listeners to buttons
-    document.querySelector('.card button:nth-child(1)').addEventListener('click', openAddPopup);
+    function openEditPopup(serviceData) {
+        document.getElementById('popup_title').textContent = 'Edit Service';
+        document.getElementById('service_id').value = serviceData.id;
+        document.getElementById('service_name').value = serviceData.service_name || '';
+        document.getElementById('in_udp').value = serviceData.input_udp || '';
+        document.getElementById('out_udp').value = serviceData.output_udp || '';
+        document.getElementById('video_format').value = serviceData.video_format || 'mpeg2video';
+        document.getElementById('audio_format').value = serviceData.audio_format || 'mp2';
+        document.getElementById('resolution').value = serviceData.resolution || '720x480';
+        document.getElementById('video_bitrate').value = serviceData.video_bitrate || '2048';
+        document.getElementById('audio_bitrate').value = serviceData.audio_bitrate || '128';
+        document.getElementById('volume').value = serviceData.volume || '0';
+        document.getElementById('service_status').value = serviceData.service || 'enable';
+
+        document.getElementById('popup').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function closePopup() {
+        document.getElementById('popup').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+    function restartService(id) {
+        if (confirm('Are you sure you want to restart this service?')) {
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = ''; // Current page
+
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'restart';
+
+            const idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.name = 'id';
+            idInput.value = id;
+
+            form.appendChild(actionInput);
+            form.appendChild(idInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    function deleteService(id) {
+        if (confirm('Are you sure you want to delete this service?')) {
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = ''; // Current page
+
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'delete';
+
+            const idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.name = 'id';
+            idInput.value = id;
+
+            form.appendChild(actionInput);
+            form.appendChild(idInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
     
-    // Add event listeners to edit buttons
-    const editButtons = document.querySelectorAll('.edit-btn');
-    editButtons.forEach(function(button, index) {
-        button.addEventListener('click', function() {
-            // In a real implementation, you would get the service data from the table row
-            const service = {
-                id: index + 1,
-                service_name: 'Service ' + (index + 1),
-                input_udp: '239.0.0.' + (index + 1),
-                output_udp: '239.0.0.' + (index + 1),
-                video_format: 'mpeg2video',
-                audio_format: 'mp2',
-                resolution: '720x480',
-                video_bitrate: '2048',
-                audio_bitrate: '128',
-                volume: '0',
-                service: 'enable'
-            };
-            openEditPopup(service);
-        });
-    });
-});
-</script>
+    document.getElementById('saveBtn').addEventListener('click', function() {
+        const id = document.getElementById('service_id').value;
+        const serviceData = {
+            service_name: document.getElementById('service_name').value,
+            input_udp: document.getElementById('in_udp').value,
+            output_udp: document.getElementById('out_udp').value,
+            video_format: document.getElementById('video_format').value,
+            audio_format: document.getElementById('audio_format').value,
+            resolution: document.getElementById('resolution').value,
+            video_bitrate: document.getElementById('video_bitrate').value,
+            audio_bitrate: document.getElementById('audio_bitrate').value,
+            volume: document.getElementById('volume').value,
+            service: document.getElementById('service_status').value
+        };
 
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = ''; // Current page
+
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = id ? 'edit' : 'add';
+
+        const idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'id';
+        idInput.value = id;
+
+        // Add all service data fields
+        for (const [key, value] of Object.entries(serviceData)) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = value;
+            form.appendChild(input);
+        }
+
+        form.appendChild(actionInput);
+        form.appendChild(idInput);
+        document.body.appendChild(form);
+        form.submit();
+    });
+
+    function submitAction(action) {
+        document.getElementById('action').value = action;
+        document.getElementById('actionForm').submit();
+    }
+
+    window.onclick = function(event) {
+        if (event.target == document.getElementById('overlay')) {
+            closePopup();
+        }
+    }
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closePopup();
+        }
+    });
+
+    document.getElementById('cancelBtn').addEventListener('click', closePopup);
+</script>
 <?php include 'footer.php'; ?>

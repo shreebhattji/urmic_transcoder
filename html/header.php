@@ -20,7 +20,7 @@ include 'static.php';
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ShreeBhattJi - URMI Digital Transcoder</title>
+    <title>ShreeBhattJi</title>
     <script src="chart.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="all.min.css">
@@ -29,7 +29,7 @@ include 'static.php';
 <body>
     <header class="top-header-1">
         <a href="index.php" style="color:white; text-decoration:none;">
-            <i class="fas fa-robot"></i> URMI Digital Transcoder
+            <i class="fas fa-robot"></i> URMIC Digital Transcoder
         </a>
     </header>
     <header class="top-header-2">

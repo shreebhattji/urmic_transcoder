@@ -181,7 +181,8 @@ main {
     justify-content: center;
     color: var(--text-primary);
     font-size: 17px;
-    z-index: 1003; /* Higher than popup */
+    z-index: 1003;
+    /* Higher than popup */
     border-bottom: 1px solid rgba(92, 158, 255, 0.2);
     background: rgba(10, 25, 41, 0.95);
     backdrop-filter: blur(10px);
@@ -199,7 +200,8 @@ main {
     justify-content: center;
     color: var(--text-primary);
     font-size: 14px;
-    z-index: 1002; /* Higher than popup but below top-header-1 */
+    z-index: 1002;
+    /* Higher than popup but below top-header-1 */
     border-bottom: 1px solid rgba(92, 158, 255, 0.2);
     background: rgba(10, 25, 41, 0.95);
     backdrop-filter: blur(10px);
@@ -255,7 +257,8 @@ main {
     letter-spacing: 0.4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     border-bottom: 1px solid rgba(92, 158, 255, 0.2);
-    z-index: 1001; /* Lower than popup */
+    z-index: 1001;
+    /* Lower than popup */
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
 }
@@ -854,6 +857,25 @@ main {
     .multicast-toggle .form-check-input:checked::before {
         transform: translateX(20px);
     }
+
+    table {
+        font-size: 0.8rem;
+    }
+
+    th,
+    td {
+        padding: 8px;
+    }
+
+    td:nth-child(13) {
+        width: 100px;
+    }
+
+    td:nth-child(13) button {
+        padding: 6px;
+        font-size: 0.8rem;
+    }
+
 }
 
 .switch-container {
@@ -929,7 +951,7 @@ input:checked+.slider:before {
     max-width: 90vw;
     max-height: 90vh;
     overflow-y: auto;
-    z-index: 1007; /* Increased z-index to be above header */
+    z-index: 99999;
     border-radius: 14px;
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(10px);
@@ -943,7 +965,7 @@ input:checked+.slider:before {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.7);
-    z-index: 1006; /* Lower than popup but higher than other elements */
+    z-index: 1006;
     width: 100%;
     height: 100%;
 }
@@ -983,4 +1005,63 @@ input:checked+.slider:before {
 #popup button[type="button"] {
     background: #ccc;
     color: black;
+}
+
+td:nth-child(13) div {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+td:nth-child(13) button {
+    width: 100%;
+    padding: 8px;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    border: 1px solid var(--accent-blue);
+}
+
+th,
+td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--accent-blue);
+    border-right: 1px solid var(--accent-blue);
+}
+
+th {
+    background: rgba(10, 25, 41, 0.7);
+    position: sticky;
+    top: 0;
+    border-top: 1px solid var(--accent-blue);
+    border-left: 1px solid var(--accent-blue);
+}
+
+td:nth-child(13) {
+    border-right: 1px solid var(--accent-blue);
+}
+
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    padding: 10px 0;
+}
+
+.table-wrapper {
+    min-width: 100%;
+    overflow: auto;
+}
+
+.service-table {
+    width: 100%;
+    min-width: 800px;
+    border-collapse: collapse;
+    margin-top: 20px;
+    border: 1px solid var(--accent-blue);
 }
