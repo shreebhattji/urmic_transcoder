@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'save') {
             // Save configuration
             $config = [
-                'interface' => $interface,
+                'interface_nickname' => $_POST['interface_nickname'] ?? $interface,
                 'method' => $_POST['method'] ?? '',
                 'ip' => $_POST['ip'] ?? '',
                 'gateway' => $_POST['gateway'] ?? '',
@@ -66,14 +66,14 @@ function generate_netplan_config($config)
 
     $netplan_content = "network:\n  version: 2\n  ethernets:\n";
 
-    foreach ($config as $interface => $settings) {
+    foreach ($config as $interface_name => $settings) {
         // Skip virtual interfaces and loopback
         if (
-            strpos($interface, 'enx') === 0 ||
-            strpos($interface, 'docker') === 0 ||
-            strpos($interface, 'br-') === 0 ||
-            strpos($interface, 'veth') === 0 ||
-            $interface === 'lo'
+            strpos($interface_name, 'enx') === 0 ||
+            strpos($interface_name, 'docker') === 0 ||
+            strpos($interface_name, 'br-') === 0 ||
+            strpos($interface_name, 'veth') === 0 ||
+            $interface_name === 'lo'
         ) {
             continue;
         }
@@ -83,7 +83,8 @@ function generate_netplan_config($config)
             continue;
         }
 
-        $netplan_content .= "    $interface:\n";
+        // Use actual interface name for netplan configuration
+        $netplan_content .= "    $interface_name:\n";
 
         switch ($settings['method']) {
             case 'dhcp':
@@ -240,7 +241,7 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                         <button type="button"
                             class="tab-button <?php echo $selected_interface === $interface['name'] ? 'active' : ''; ?>"
                             data-interface="<?php echo htmlspecialchars($interface['name']); ?>">
-                            <?php echo htmlspecialchars($interface['name']); ?>
+                            <?php echo htmlspecialchars($interface['config']['interface_nickname'] ?? $interface['name']); ?>
                         </button>
                     <?php endforeach; ?>
                 </div>
@@ -265,10 +266,10 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                             <input type="hidden" name="action" value="save">
 
                             <div class="mb-3">
-                                <label class="form-label">Interface Name</label>
-                                <input type="text" class="form-control" name="interface"
-                                    value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['interface'] ?? $selected_interface); ?>"
-                                    placeholder="Enter interface name">
+                                <label class="form-label">Interface Nickname</label>
+                                <input type="text" class="form-control" name="interface_nickname"
+                                    value="<?php echo htmlspecialchars($interface_data[$selected_interface]['config']['interface_nickname'] ?? $selected_interface); ?>"
+                                    placeholder="Enter interface nickname">
                             </div>
 
                             <div class="mb-3">

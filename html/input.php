@@ -458,17 +458,11 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
                 <thead>
                     <tr>
                         <th>No</th>
-                        <th>ID</th>
-                        <th>Service Name</th>
-                        <th>Input</th>
-                        <th>Output</th>
-                        <th>Video</th>
-                        <th>Audio</th>
-                        <th>Resolution</th>
-                        <th>V-Bitrate</th>
-                        <th>A-Bitrate</th>
-                        <th>Volume (dB)</th>
                         <th>Status</th>
+                        <th>Service Name</th>
+                        <th>UDP</th>
+                        <th>Video Info</th>
+                        <th>Audio Info</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -477,19 +471,36 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
                     <?php foreach ($data as $row): ?>
                         <tr>
                             <td><?= $i++ ?></td>
-                            <td><?= $row['id'] ?></td>
-                            <td><?= $row["service_name"] ?></td>
-                            <td><?= $row["input_udp"] ?></td>
-                            <td><?= $row["output_udp"] ?></td>
-                            <td><?= $row["video_format"] ?></td>
-                            <td><?= $row["audio_format"] ?></td>
-                            <td><?= $row["resolution"] ?></td>
-                            <td><?= $row["video_bitrate"] ?></td>
-                            <td><?= $row["audio_bitrate"] ?></td>
-                            <td><?= $row["volume"] ?> dB</td>
-                            <td><?= $row["service"] ?></td>
                             <td>
-                                <div class="action-buttons">
+                                <div><?= $row['id'] ?> </div>
+                                <div><?php if (isset($row["service"]) && $row["service"] === "enable"): ?>
+                                        <span style="color: green;">(Running)</span>
+                                    <?php else: ?>
+                                        <span style="color: red;">(Stopped)</span>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                            <td><?= $row["service_name"] ?></td>
+                            <td>
+                                <div><strong>In:</strong> <?= $row["input_udp"] ?></div>
+                                <div><strong>Out:</strong> <?= $row["output_udp"] ?></div>
+                            </td>
+                            <td>
+                                <div style="display: flex; flex-direction: column;">
+                                    <div><strong>Video:</strong> <?= $row["video_format"] ?></div>
+                                    <div><strong>Resolution:</strong> <?= $row["resolution"] ?></div>
+                                    <div><strong>Bitrate:</strong> <?= $row["video_bitrate"] ?> kbps</div>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="display: flex; flex-direction: column;">
+                                    <div><strong>Audio:</strong> <?= $row["audio_format"] ?></div>
+                                    <div><strong>Bitrate:</strong> <?= $row["audio_bitrate"] ?> kbps</div>
+                                    <div><strong>Volume:</strong> <?= $row["volume"] ?> dB</div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="action-buttons" style="display: flex; flex-direction: column;">
                                     <button class="edit-btn" onclick='openEditPopup(<?= json_encode($row) ?>)'>Edit</button>
                                     <button class="restart-btn" onclick="restartService(<?= $row['id'] ?>)">Restart</button>
                                     <button class="delete-btn" onclick="deleteService(<?= $row['id'] ?>)">Delete</button>
@@ -524,7 +535,7 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
     </select>
 
     <select id="resolution">
-        <option value="720x480" selected>720x480</option>
+        <option value="720x576" selected>720x576</option>
         <option value="1280x720">1280x720</option>
         <option value="1920x1080">1920x1080</option>
     </select>
@@ -568,7 +579,7 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
         document.getElementById('out_udp').value = '';
         document.getElementById('video_format').value = 'mpeg2video';
         document.getElementById('audio_format').value = 'mp2';
-        document.getElementById('resolution').value = '720x480';
+        document.getElementById('resolution').value = '720x576';
         document.getElementById('video_bitrate').value = '2048';
         document.getElementById('audio_bitrate').value = '128';
         document.getElementById('volume').value = '0';
@@ -586,7 +597,7 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
         document.getElementById('out_udp').value = serviceData.output_udp || '';
         document.getElementById('video_format').value = serviceData.video_format || 'mpeg2video';
         document.getElementById('audio_format').value = serviceData.audio_format || 'mp2';
-        document.getElementById('resolution').value = serviceData.resolution || '720x480';
+        document.getElementById('resolution').value = serviceData.resolution || '720x576';
         document.getElementById('video_bitrate').value = serviceData.video_bitrate || '2048';
         document.getElementById('audio_bitrate').value = serviceData.audio_bitrate || '128';
         document.getElementById('volume').value = serviceData.volume || '0';
@@ -646,7 +657,7 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
             form.submit();
         }
     }
-    
+
     document.getElementById('saveBtn').addEventListener('click', function() {
         const id = document.getElementById('service_id').value;
         const serviceData = {
