@@ -12,6 +12,42 @@ include 'header.php'; ?>
 <?php
 $coreFile = "/var/www/core.json";
 
+function getInterfaceIp($interfaceName)
+{
+    $networkFile = "/var/www/network.json";
+    if (!file_exists($networkFile)) {
+        return "";
+    }
+
+    $networkData = json_decode(file_get_contents($networkFile), true);
+    if (!is_array($networkData)) {
+        return "";
+    }
+
+    // First check by interface name
+    if (isset($networkData[$interfaceName])) {
+        $interfaceData = $networkData[$interfaceName];
+        if (isset($interfaceData["method"]) && $interfaceData["method"] === "static" && isset($interfaceData["ip"])) {
+            // Return just the IP part (remove subnet mask)
+            $ip = explode('/', $interfaceData["ip"])[0];
+            return $ip;
+        }
+    }
+
+    // Then check by interface nickname
+    foreach ($networkData as $interfaceKey => $interfaceData) {
+        if (isset($interfaceData["interface_nickname"]) && $interfaceData["interface_nickname"] === $interfaceName) {
+            if (isset($interfaceData["method"]) && $interfaceData["method"] === "static" && isset($interfaceData["ip"])) {
+                // Return just the IP part (remove subnet mask)
+                $ip = explode('/', $interfaceData["ip"])[0];
+                return $ip;
+            }
+        }
+    }
+
+    return "";
+}
+
 function loadCoreState(): array
 {
     global $coreFile;
@@ -109,7 +145,7 @@ function allocateCore(int $serviceId): array
         }
     }
 
-    // OVERFLOW (true round-robin)
+    // OVERFLOW (true round-robin) - This is the fix
     $slot = $plan[$state["cursor"] % $planCount];
     $state["allocations"][$serviceId] = $slot;
     $state["cursor"] = ($state["cursor"] + 1) % $planCount;
@@ -149,12 +185,26 @@ function all_service_update()
         $core = (int)$alloc["cpu"];
         $node = (int)$alloc["node"];
 
+        $inputIp = "";
+        $outputIp = "";
+
+        if (isset($new["input_interface"]) && $new["input_interface"] !== "none") {
+            $inputIp = getInterfaceIp($new["input_interface"]);
+        }
+
+        if (isset($new["output_interface"]) && $new["output_interface"] !== "none") {
+            $outputIp = getInterfaceIp($new["output_interface"]);
+        }
+
         $ffmpeg = 'numactl --cpunodebind=' . $node
             . ' --preferred=' . $node
             . ' taskset -c ' . $core
             . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
-            . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000"'
-            . ' -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
+            . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000';
+
+        if ($inputIp != "")
+            $ffmpeg .= '&localaddr=' . $inputIp;
+        $ffmpeg .= '" -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
             . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 8 '
             . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ($new["video_bitrate"] + 500) . 'k '
             . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
@@ -163,6 +213,8 @@ function all_service_update()
             $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
         }
         $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1';
+        if ($outputIp != "")
+            $ffmpeg .= '&localaddr=' . $outputIp;
 
         $ffmpeg .= '"';
         file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
@@ -201,12 +253,26 @@ function all_service_start()
         $core = (int)$alloc["cpu"];
         $node = (int)$alloc["node"];
         $new["service"] = "enable";
+        $inputIp = "";
+        $outputIp = "";
+
+        if (isset($new["input_interface"]) && $new["input_interface"] !== "none") {
+            $inputIp = getInterfaceIp($new["input_interface"]);
+        }
+
+        if (isset($new["output_interface"]) && $new["output_interface"] !== "none") {
+            $outputIp = getInterfaceIp($new["output_interface"]);
+        }
+
         $ffmpeg = 'numactl --cpunodebind=' . $node
             . ' --preferred=' . $node
             . ' taskset -c ' . $core
             . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
-            . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000"'
-            . ' -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
+            . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000';
+
+        if ($inputIp != "")
+            $ffmpeg .= '&localaddr=' . $inputIp;
+        $ffmpeg .= '" -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
             . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 8 '
             . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ($new["video_bitrate"] + 500) . 'k '
             . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
@@ -215,6 +281,8 @@ function all_service_start()
             $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
         }
         $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1';
+        if ($outputIp != "")
+            $ffmpeg .= '&localaddr=' . $outputIp;
 
         $ffmpeg .= '"';
         file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
@@ -329,12 +397,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $core = (int)$alloc["cpu"];
             $node = (int)$alloc["node"];
 
+            $inputIp = "";
+            $outputIp = "";
+
+            if (isset($new["input_interface"]) && $new["input_interface"] !== "none") {
+                $inputIp = getInterfaceIp($new["input_interface"]);
+            }
+
+            if (isset($new["output_interface"]) && $new["output_interface"] !== "none") {
+                $outputIp = getInterfaceIp($new["output_interface"]);
+            }
+
             $ffmpeg = 'numactl --cpunodebind=' . $node
                 . ' --preferred=' . $node
                 . ' taskset -c ' . $core
                 . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
-                . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000"'
-                . ' -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
+                . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000';
+
+            if ($inputIp != "")
+                $ffmpeg .= '&localaddr=' . $inputIp;
+            $ffmpeg .= '" -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
                 . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 8 '
                 . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ($new["video_bitrate"] + 500) . 'k '
                 . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
@@ -343,6 +425,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
             }
             $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1';
+            if ($outputIp != "")
+                $ffmpeg .= '&localaddr=' . $outputIp;
 
             $ffmpeg .= '"';
             file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
@@ -399,12 +483,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $alloc = allocateCore($new["id"]);
                     $core = (int)$alloc["cpu"];
                     $node = (int)$alloc["node"];
+                    $inputIp = "";
+                    $outputIp = "";
+
+                    if (isset($new["input_interface"]) && $new["input_interface"] !== "none") {
+                        $inputIp = getInterfaceIp($new["input_interface"]);
+                    }
+
+                    if (isset($new["output_interface"]) && $new["output_interface"] !== "none") {
+                        $outputIp = getInterfaceIp($new["output_interface"]);
+                    }
+
                     $ffmpeg = 'numactl --cpunodebind=' . $node
                         . ' --preferred=' . $node
                         . ' taskset -c ' . $core
                         . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
-                        . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000"'
-                        . ' -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
+                        . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000';
+
+                    if ($inputIp != "")
+                        $ffmpeg .= '&localaddr=' . $inputIp;
+                    $ffmpeg .= '" -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
                         . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 8 '
                         . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ($new["video_bitrate"] + 500) . 'k '
                         . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
@@ -413,6 +511,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
                     }
                     $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1';
+                    if ($outputIp != "")
+                        $ffmpeg .= '&localaddr=' . $outputIp;
+
                     $ffmpeg .= '"';
 
                     file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);

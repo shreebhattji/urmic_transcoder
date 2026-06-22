@@ -29,7 +29,7 @@ include 'static.php';
 <body>
     <header class="top-header-1">
         <a href="index.php" style="color:white; text-decoration:none;">
-            <i class="fas fa-robot"></i> URMIC Digital Transcoder
+            <i class="fas fa-robot"></i> URMIC MPEG2 Digital Transcoder
         </a>
     </header>
     <header class="top-header-2">
