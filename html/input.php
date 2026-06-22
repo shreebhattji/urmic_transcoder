@@ -588,13 +588,12 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
         <div class="card">
 
             <h2>Service List</h2>
-            <div style="margin-top:10px;">
-                <button onclick="openAddPopup()">Add Service</button>
-                <button onclick="submitAction('start_all')">Start All</button>
-                <button onclick="submitAction('stop_all')">Stop All</button>
-                <button onclick="submitAction('update_all')">Update All</button>
+            <div class="button-container">
+                <button class="green-btn" onclick="openAddPopup()">Add Service</button>
+                <button class="green-btn" onclick="submitAction('start_all')">Start All</button>
+                <button class="green-btn" onclick="submitAction('update_all')">Update All</button>
+                <button class="red-btn" onclick="submitAction('stop_all')">Stop All</button>
             </div>
-
             <form id="actionForm" method="post" style="display:none;">
                 <input type="hidden" name="action" id="action">
             </form>

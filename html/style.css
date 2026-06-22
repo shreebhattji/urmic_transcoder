@@ -434,11 +434,13 @@ main {
     font-weight: bold;
     padding: 10px 20px;
     border: none;
-    width: 33%;
+    width: 100%;
     border-radius: 7px;
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 4px 12px rgba(0, 168, 255, 0.2);
+    margin: 5px 0;
+    /* Add vertical spacing between buttons */
 }
 
 .red-btn {
@@ -447,11 +449,13 @@ main {
     font-weight: bold;
     padding: 10px 20px;
     border: none;
-    width: 33%;
+    width: 100%;
     border-radius: 7px;
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 4px 12px rgba(255, 71, 87, 0.2);
+    margin: 5px 0;
+    /* Add vertical spacing between buttons */
 }
 
 .red-btn:hover {
@@ -1064,4 +1068,100 @@ td:nth-child(13) {
     border-collapse: collapse;
     margin-top: 20px;
     border: 1px solid var(--accent-blue);
+}
+
+.service-table th,
+.service-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--accent-blue);
+    border-right: 1px solid var(--accent-blue);
+}
+
+.service-table th {
+    background: rgba(10, 25, 41, 0.7);
+    position: sticky;
+    top: 0;
+    border-top: 1px solid var(--accent-blue);
+    border-left: 1px solid var(--accent-blue);
+}
+
+.edit-btn {
+    background: linear-gradient(90deg, #00a8ff, #00b8ff);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 168, 255, 0.2);
+    width: 100%;
+    margin: 3px 0;
+}
+
+.edit-btn:hover {
+    background: linear-gradient(90deg, #00b8ff, #00a8ff);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 168, 255, 0.3);
+}
+
+.restart-btn {
+    background: linear-gradient(90deg, #ff9f40, #ff6b00);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(255, 159, 64, 0.2);
+    width: 100%;
+    margin: 3px 0;
+}
+
+.restart-btn:hover {
+    background: linear-gradient(90deg, #ff6b00, #ff9f40);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(255, 159, 64, 0.3);
+}
+
+.delete-btn {
+    background: linear-gradient(90deg, #ff4757, #ff6b81);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(255, 71, 87, 0.2);
+    width: 100%;
+    margin: 3px 0;
+}
+
+.delete-btn:hover {
+    background: linear-gradient(90deg, #ff6b81, #ff4757);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(255, 71, 87, 0.3);
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.card .button-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.card .button-container .green-btn,
+.card .button-container .red-btn {
+    flex: 1 1 calc(50% - 10px);
+    min-width: 120px;
+    margin: 0;
 }
