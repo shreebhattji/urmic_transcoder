@@ -162,8 +162,9 @@ function all_service_update()
         if ($new["service_name"] !== "") {
             $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
         }
-        $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1&localaddr=10.10.10.11"';
+        $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1';
 
+        $ffmpeg .= '"';
         file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
 
         if ($new["service"] === "enable") {
@@ -213,8 +214,9 @@ function all_service_start()
         if ($new["service_name"] !== "") {
             $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
         }
-        $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1&localaddr=10.10.10.11"';
+        $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1';
 
+        $ffmpeg .= '"';
         file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
 
         if ($new["service"] === "enable") {
@@ -258,6 +260,21 @@ function all_service_stop()
     );
 }
 
+// Load network interfaces
+$networkFile = "/var/www/network.json";
+$interfaces = [];
+if (file_exists($networkFile)) {
+    $networkData = json_decode(file_get_contents($networkFile), true);
+    if (is_array($networkData)) {
+        foreach ($networkData as $interfaceName => $interfaceData) {
+            $nickname = !empty($interfaceData["interface_nickname"])
+                ? $interfaceData["interface_nickname"]
+                : $interfaceName;
+            $interfaces[$interfaceName] = $nickname;
+        }
+    }
+}
+
 $jsonFile = __DIR__ . "/input.json";
 if (!file_exists($jsonFile)) {
     file_put_contents($jsonFile, json_encode([]));
@@ -267,6 +284,21 @@ $data = json_decode(file_get_contents($jsonFile), true);
 foreach ($data as $k => $d) {
     if (!isset($d["service_name"])) $data[$k]["service_name"] = "";
     if (!isset($d["volume"])) $data[$k]["volume"] = "0";
+    // Extract interface from input_udp and output_udp if not already present
+    if (isset($d["input_udp"]) && !isset($d["input_interface"])) {
+        $parts = explode(':', $d["input_udp"]);
+        if (count($parts) >= 3) {
+            $data[$k]["input_interface"] = $parts[0];
+            $data[$k]["input_udp"] = $parts[1] . ':' . $parts[2];
+        }
+    }
+    if (isset($d["output_udp"]) && !isset($d["output_interface"])) {
+        $parts = explode(':', $d["output_udp"]);
+        if (count($parts) >= 3) {
+            $data[$k]["output_interface"] = $parts[0];
+            $data[$k]["output_udp"] = $parts[1] . ':' . $parts[2];
+        }
+    }
 }
 file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
@@ -278,7 +310,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 "id" => time(),
                 "service_name" => $_POST["service_name"],
                 "input_udp" => $_POST["input_udp"],
+                "input_interface" => $_POST["in_interface"],
                 "output_udp" => $_POST["output_udp"],
+                "output_interface" => $_POST["out_interface"],
                 "video_format" => $_POST["video_format"],
                 "audio_format" => $_POST["audio_format"],
                 "resolution" => $_POST["resolution"],
@@ -308,8 +342,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if ($new["service_name"] !== "") {
                 $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
             }
-            $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1&localaddr=10.10.10.11"';
+            $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1';
 
+            $ffmpeg .= '"';
             file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
 
             if ($new["service"] === "enable") {
@@ -335,7 +370,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             if (file_exists("/var/www/encoder/$id.sh")) unlink("/var/www/encoder/$id.sh");
 
-            // Redirect to refresh page after deleting
             header("Location: " . $_SERVER["PHP_SELF"]);
             exit;
             break;
@@ -349,7 +383,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         "id" => $id,
                         "service_name" => $_POST["service_name"],
                         "input_udp" => $_POST["input_udp"],
+                        "input_interface" => $_POST["in_interface"],
                         "output_udp" => $_POST["output_udp"],
+                        "output_interface" => $_POST["out_interface"],
                         "video_format" => $_POST["video_format"],
                         "audio_format" => $_POST["audio_format"],
                         "resolution" => $_POST["resolution"],
@@ -376,7 +412,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     if ($new["service_name"] !== "") {
                         $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
                     }
-                    $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1&localaddr=10.10.10.11"';
+                    $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1';
+                    $ffmpeg .= '"';
 
                     file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
 
@@ -393,32 +430,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
 
             file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
-            // Redirect to refresh page after editing
             header("Location: " . $_SERVER["PHP_SELF"]);
             exit;
             break;
         case "restart":
             $id = intval($_POST["id"]);
             exec("sudo systemctl restart encoder@$id");
-            // Redirect to refresh page after restart
             header("Location: " . $_SERVER["PHP_SELF"]);
             exit;
             break;
         case "start_all":
             all_service_start();
-            // Redirect to refresh page after start_all
             header("Location: " . $_SERVER["PHP_SELF"]);
             exit;
             break;
         case "stop_all":
             all_service_stop();
-            // Redirect to refresh page after stop_all
             header("Location: " . $_SERVER["PHP_SELF"]);
             exit;
             break;
         case "update_all":
             all_service_update();
-            // Redirect to refresh page after update_all
             header("Location: " . $_SERVER["PHP_SELF"]);
             exit;
             break;
@@ -430,6 +462,21 @@ $data = json_decode(file_get_contents($jsonFile), true);
 foreach ($data as $k => $d) {
     if (!isset($d["service_name"])) $data[$k]["service_name"] = "";
     if (!isset($d["volume"])) $data[$k]["volume"] = "0";
+    // Extract interface from input_udp and output_udp if not already present
+    if (isset($d["input_udp"]) && !isset($d["input_interface"])) {
+        $parts = explode(':', $d["input_udp"]);
+        if (count($parts) >= 3) {
+            $data[$k]["input_interface"] = $parts[0];
+            $data[$k]["input_udp"] = $parts[1] . ':' . $parts[2];
+        }
+    }
+    if (isset($d["output_udp"]) && !isset($d["output_interface"])) {
+        $parts = explode(':', $d["output_udp"]);
+        if (count($parts) >= 3) {
+            $data[$k]["output_interface"] = $parts[0];
+            $data[$k]["output_udp"] = $parts[1] . ':' . $parts[2];
+        }
+    }
 }
 file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
@@ -482,8 +529,30 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
                             </td>
                             <td><?= $row["service_name"] ?></td>
                             <td>
-                                <div><strong>In:</strong> <?= $row["input_udp"] ?></div>
-                                <div><strong>Out:</strong> <?= $row["output_udp"] ?></div>
+                                <div><strong>In:</strong>
+                                    <?php
+                                    $inInterface = $row["input_interface"] ?? '';
+                                    echo  $row["input_udp"];
+                                    ?>
+                                </div>
+                                <div><strong>In Port:</strong>
+                                    <?php
+                                    $inPort = $interfaces[$inInterface] ?? $inInterface;
+                                    echo $inPort;
+                                    ?>
+                                </div>
+                                <div><strong>Out:</strong>
+                                    <?php
+                                    $outInterface = $row["output_interface"] ?? '';
+                                    echo  $row["output_udp"];
+                                    ?>
+                                </div>
+                                <div><strong>Out Port:</strong>
+                                    <?php
+                                    $outPort = $interfaces[$outInterface] ?? $outInterface;
+                                    echo $outPort;
+                                    ?>
+                                </div>
                             </td>
                             <td>
                                 <div style="display: flex; flex-direction: column;">
@@ -523,8 +592,29 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
     <input type="text" id="service_name" placeholder="Service Name">
 
-    <input type="text" id="in_udp" placeholder="Input UDP">
-    <input type="text" id="out_udp" placeholder="Output UDP">
+    <div style="display: flex; gap: 10px;">
+        <div style="flex: 1;">
+            <label for="in_interface">Input Interface:</label>
+            <select id="in_interface">
+                <option value="none">None</option>
+                <?php foreach ($interfaces as $interfaceName => $nickname): ?>
+                    <option value="<?= $interfaceName ?>"><?= $nickname ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div style="flex: 1;">
+            <label for="out_interface">Output Interface:</label>
+            <select id="out_interface">
+                <option value="none">None</option>
+                <?php foreach ($interfaces as $interfaceName => $nickname): ?>
+                    <option value="<?= $interfaceName ?>"><?= $nickname ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    </div>
+
+    <input type="text" id="in_udp" placeholder="228.1.1.1:8001">
+    <input type="text" id="out_udp" placeholder="228.1.1.1:8002">
 
     <select id="video_format">
         <option value="mpeg2video" selected>MPEG2</option>
@@ -540,7 +630,7 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
         <option value="1920x1080">1920x1080</option>
     </select>
 
-    <input type="number" id="video_bitrate" placeholder="Video Bitrate (kbps)" value="2048">
+    <input type="number" id="video_bitrate" placeholder="Video Bitrate (kbps)" value="4096">
     <input type="number" id="audio_bitrate" placeholder="Audio Bitrate (kbps)" value="128">
 
     <select id="volume">
@@ -580,10 +670,14 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
         document.getElementById('video_format').value = 'mpeg2video';
         document.getElementById('audio_format').value = 'mp2';
         document.getElementById('resolution').value = '720x576';
-        document.getElementById('video_bitrate').value = '2048';
+        document.getElementById('video_bitrate').value = '4096';
         document.getElementById('audio_bitrate').value = '128';
         document.getElementById('volume').value = '0';
         document.getElementById('service_status').value = 'enable';
+
+        // Set default to "none" for interfaces
+        document.getElementById('in_interface').value = 'none';
+        document.getElementById('out_interface').value = 'none';
 
         document.getElementById('popup').style.display = 'block';
         document.getElementById('overlay').style.display = 'block';
@@ -598,10 +692,22 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
         document.getElementById('video_format').value = serviceData.video_format || 'mpeg2video';
         document.getElementById('audio_format').value = serviceData.audio_format || 'mp2';
         document.getElementById('resolution').value = serviceData.resolution || '720x576';
-        document.getElementById('video_bitrate').value = serviceData.video_bitrate || '2048';
+        document.getElementById('video_bitrate').value = serviceData.video_bitrate || '4096';
         document.getElementById('audio_bitrate').value = serviceData.audio_bitrate || '128';
         document.getElementById('volume').value = serviceData.volume || '0';
         document.getElementById('service_status').value = serviceData.service || 'enable';
+
+        // Set interface values if they exist, default to "none" if not set
+        if (serviceData.input_interface) {
+            document.getElementById('in_interface').value = serviceData.input_interface;
+        } else {
+            document.getElementById('in_interface').value = 'none';
+        }
+        if (serviceData.output_interface) {
+            document.getElementById('out_interface').value = serviceData.output_interface;
+        } else {
+            document.getElementById('out_interface').value = 'none';
+        }
 
         document.getElementById('popup').style.display = 'block';
         document.getElementById('overlay').style.display = 'block';
@@ -663,7 +769,9 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
         const serviceData = {
             service_name: document.getElementById('service_name').value,
             input_udp: document.getElementById('in_udp').value,
+            in_interface: document.getElementById('in_interface').value,
             output_udp: document.getElementById('out_udp').value,
+            out_interface: document.getElementById('out_interface').value,
             video_format: document.getElementById('video_format').value,
             audio_format: document.getElementById('audio_format').value,
             resolution: document.getElementById('resolution').value,
@@ -675,7 +783,7 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
         const form = document.createElement('form');
         form.method = 'post';
-        form.action = ''; // Current page
+        form.action = '';
 
         const actionInput = document.createElement('input');
         actionInput.type = 'hidden';
