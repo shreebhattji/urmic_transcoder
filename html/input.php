@@ -205,7 +205,7 @@ function all_service_update()
         if ($inputIp != "")
             $ffmpeg .= '&localaddr=' . $inputIp;
         $ffmpeg .= '" -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
-            . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 8 '
+            . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 4 '
             . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ($new["video_bitrate"] + 500) . 'k '
             . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
             . ' -metadata service_provider="ShreeBhattJI" ';
@@ -273,7 +273,7 @@ function all_service_start()
         if ($inputIp != "")
             $ffmpeg .= '&localaddr=' . $inputIp;
         $ffmpeg .= '" -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
-            . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 8 '
+            . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 4 '
             . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ($new["video_bitrate"] + 500) . 'k '
             . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
             . ' -metadata service_provider="ShreeBhattJI" ';
@@ -417,7 +417,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if ($inputIp != "")
                 $ffmpeg .= '&localaddr=' . $inputIp;
             $ffmpeg .= '" -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
-                . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 8 '
+                . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 4 '
                 . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ($new["video_bitrate"] + 500) . 'k '
                 . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
                 . ' -metadata service_provider="ShreeBhattJI" ';
@@ -503,7 +503,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     if ($inputIp != "")
                         $ffmpeg .= '&localaddr=' . $inputIp;
                     $ffmpeg .= '" -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
-                        . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 8 '
+                        . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 4 '
                         . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ($new["video_bitrate"] + 500) . 'k '
                         . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
                         . ' -metadata service_provider="ShreeBhattJI" ';
