@@ -84,7 +84,7 @@ function parseCpuList(string $cpuList): array
     return $cpus;
 }
 
-function buildSequentialNumaPlan(): array
+function buildNumaPlan(): array
 {
     $nodes = [];
     $nodePaths = glob('/sys/devices/system/node/node*', GLOB_ONLYDIR);
@@ -100,7 +100,7 @@ function buildSequentialNumaPlan(): array
 
     $finalPlan = [];
     $maxCpus = max(array_map('count', $nodes));
-
+    
     for ($i = 0; $i < $maxCpus; $i++) {
         foreach ($nodeIds as $nid) {
             if (isset($nodes[$nid][$i])) {
@@ -119,21 +119,18 @@ function allocateCore(int $serviceId): array
 {
     $state = loadCoreState();
 
-    // Already allocated
     if (isset($state["allocations"][$serviceId])) {
         return $state["allocations"][$serviceId];
     }
 
-    $plan = buildSequentialNumaPlan();
+    $plan = buildNumaPlan();
     $planCount = count($plan);
 
-    // Build occupied set as node:cpu
     $occupied = [];
     foreach ($state["allocations"] as $a) {
         $occupied[$a["node"] . ":" . $a["cpu"]] = true;
     }
 
-    // GAP FILLING (authoritative)
     foreach ($plan as $index => $slot) {
         $key = $slot["node"] . ":" . $slot["cpu"];
         if (!isset($occupied[$key])) {
@@ -144,7 +141,6 @@ function allocateCore(int $serviceId): array
         }
     }
 
-    // OVERFLOW (true round-robin) - This is the fix
     $slot = $plan[$state["cursor"] % $planCount];
     $state["allocations"][$serviceId] = $slot;
     $state["cursor"] = ($state["cursor"] + 1) % $planCount;
