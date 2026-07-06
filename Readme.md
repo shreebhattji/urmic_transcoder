@@ -2,7 +2,9 @@ Urmi MPEG2 transcoder
 ----------------------------------------
 
 Mpeg2 Transcoder
-Used by mso old box
+Used by mso
+
+![Logo](images/mpeg2.png)
 
 Instalation 
 ----------------------------------------
