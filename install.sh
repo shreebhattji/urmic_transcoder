@@ -188,19 +188,23 @@ sudo systemctl enable --now system-monitor.service
 sudo systemctl restart --now system-monitor.service
 
 
-sudo ufw default allow outgoing
-sudo ufw default deny incoming
-sudo ufw allow 80
-sudo ufw allow 443
-sudo ufw allow proto udp to 224.0.0.0/4
-sudo ufw route allow proto udp to 224.0.0.0/4
-sudo ufw deny out to 239.255.254.254 port 39000 proto udp
-sudo ufw allow from 172.16.111.112 to 172.16.111.111 port 80
-sudo ufw allow from 172.16.111.112 to 172.16.111.111 port 443
-sudo ufw --force enable
 DEVICE_ID="$(sudo cat /sys/class/dmi/id/product_uuid | tr -d '\n')"
 sudo sed -i 's/certificatecertificatecertificatecertificate/'$DEVICE_ID'/g' /var/www/html/certification.html
 
 sudo chmod 777 -R /var/www
 sudo chown -R www-data:www-data /var/www
 sudo systemctl daemon-reload
+
+
+sudo tee /etc/sysctl.d/99-streaming.conf >/dev/null <<'EOF'
+net.core.rmem_default=16777216
+net.core.wmem_default=16777216
+net.core.rmem_max=67108864
+net.core.wmem_max=67108864
+net.core.optmem_max=25165824
+
+net.ipv4.udp_rmem_min=131072
+net.ipv4.udp_wmem_min=131072
+
+net.core.netdev_max_backlog=300000
+EOF
