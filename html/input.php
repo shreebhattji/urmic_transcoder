@@ -194,8 +194,8 @@ function all_service_update()
         $ffmpeg = 'numactl --cpunodebind=' . $node
             . ' --preferred=' . $node
             . ' taskset -c ' . $core
-            . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
-            . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000';
+            . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer '
+            . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=8192&buffer_size=262144&overrun_nonfatal=1&timeout=5000000';
 
         if ($inputIp != "")
             $ffmpeg .= '&localaddr=' . $inputIp;
@@ -262,8 +262,8 @@ function all_service_start()
         $ffmpeg = 'numactl --cpunodebind=' . $node
             . ' --preferred=' . $node
             . ' taskset -c ' . $core
-            . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
-            . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000';
+            . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer '
+            . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=8192&buffer_size=262144&overrun_nonfatal=1&timeout=5000000';
 
         if ($inputIp != "")
             $ffmpeg .= '&localaddr=' . $inputIp;
@@ -406,8 +406,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $ffmpeg = 'numactl --cpunodebind=' . $node
                 . ' --preferred=' . $node
                 . ' taskset -c ' . $core
-                . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
-                . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000';
+                . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer '
+                . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=8192&buffer_size=262144&overrun_nonfatal=1&timeout=5000000';
 
             if ($inputIp != "")
                 $ffmpeg .= '&localaddr=' . $inputIp;
@@ -492,8 +492,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $ffmpeg = 'numactl --cpunodebind=' . $node
                         . ' --preferred=' . $node
                         . ' taskset -c ' . $core
-                        . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer -readrate 1.0'
-                        . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=70000&buffer_size=70000&overrun_nonfatal=1&timeout=5000000';
+                        . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer '
+                        . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=8192&buffer_size=262144&overrun_nonfatal=1&timeout=5000000';
 
                     if ($inputIp != "")
                         $ffmpeg .= '&localaddr=' . $inputIp;
