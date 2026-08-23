@@ -257,6 +257,7 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                         </span>
                     </div>
                     <div class="interface-body">
+                        <p><strong>Interface:</strong> <?php echo htmlspecialchars($selected_interface); ?></p>
                         <p><strong>IP Address:</strong> <?php echo htmlspecialchars($interface_data[$selected_interface]['ip'] ?: 'N/A'); ?></p>
                         <p><strong>MAC Address:</strong> <?php echo htmlspecialchars($interface_data[$selected_interface]['mac'] ?: 'N/A'); ?></p>
                     </div>

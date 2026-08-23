@@ -640,7 +640,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     <!-- HEADER ROW 1 -->
     <header class="top-header-1">
-        <a href="index.php">URMI MPEG2 Transcoder</a>
+        <a href="https://urmic.org/urmic-mpeg2-transcoder/">URMI MPEG2 Transcoder</a>
     </header>
 
     <!-- HEADER ROW 2 -->
