@@ -234,8 +234,13 @@ main {
     transition: width 0.3s ease;
 }
 
-.top-header-2 nav a:hover::after {
+.top-header-2 nav a:hover::after,
+.top-header-2 nav a.active::after {
     width: 100%;
+}
+
+.top-header-2 nav a.active {
+    color: var(--accent-blue-light);
 }
 
 /* === MAIN NAV HEADER === */
@@ -289,11 +294,13 @@ main {
     transition: width 0.3s ease;
 }
 
-.site-header nav a:hover {
+.site-header nav a:hover,
+.site-header nav a.active {
     color: var(--accent-blue-light);
 }
 
-.site-header nav a:hover::after {
+.site-header nav a:hover::after,
+.site-header nav a.active::after {
     width: 100%;
 }
 

@@ -26,3 +26,21 @@ if (empty($_SESSION['user'])) {
     header('Location: /login.php', true, 302);
     exit;
 }
+
+/* ---------- CSRF INITIALIZATION ---------- */
+if (empty($_SESSION['csrf'])) {
+    $_SESSION['csrf'] = bin2hex(random_bytes(32));
+}
+
+function verify_csrf(): void {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $token = $_POST['csrf'] ?? $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (empty($token) || empty($_SESSION['csrf']) || !hash_equals($_SESSION['csrf'], $token)) {
+            http_response_code(403);
+            die('Invalid CSRF token.');
+        }
+    }
+}
+
+verify_csrf();
+

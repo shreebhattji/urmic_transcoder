@@ -264,6 +264,7 @@ $selected_interface = $_GET['interface'] ?? array_keys($interface_data)[0] ?? nu
                         <form method="post" action="" class="interface-form">
                             <input type="hidden" name="interface" value="<?php echo htmlspecialchars($selected_interface); ?>">
                             <input type="hidden" name="action" value="save">
+                            <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
 
                             <div class="mb-3">
                                 <label class="form-label">Interface Nickname</label>

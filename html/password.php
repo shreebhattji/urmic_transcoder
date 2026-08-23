@@ -1,5 +1,4 @@
 <?php
-
 /*
 Urmi you happy me happy licence
 
@@ -9,43 +8,34 @@ License text:
 https://github.com/shreebhattji/Urmi/blob/main/licence.md
 */
 
-declare(strict_types=1);
-include 'header.php';
-?>
-<?php
-$usersFile    = '/var/www/users.json';
+require_once __DIR__ . '/require_login.php';
+
+$usersFile = '/var/www/users.json';
+
 function load_json(string $file): array
 {
     return is_file($file) ? json_decode(file_get_contents($file), true) ?: [] : [];
 }
+
 function save_json(string $file, array $data): void
 {
     file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT), LOCK_EX);
 }
-if (empty($_SESSION['csrf'])) {
-    $_SESSION['csrf'] = bin2hex(random_bytes(32));
-}
+
 
 $error = '';
 $success = '';
 
-$currentUser = $_SESSION['user'];
+$currentUser = $_SESSION['user'] ?? '';
 $users = load_json($usersFile);
 
-if (!isset($users[$currentUser])) {
-    // Safety fallback
-    session_destroy();
+if ($currentUser === '' || !isset($users[$currentUser])) {
     header('Location: /login.php');
     exit;
 }
 
 /* ---------- POST ---------- */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    if (!hash_equals($_SESSION['csrf'], $_POST['csrf'] ?? '')) {
-        http_response_code(400);
-        die('Invalid request');
-    }
 
     $newUsername = strtolower(trim($_POST['new_username'] ?? ''));
     $currentPass = $_POST['current_password'] ?? '';
@@ -80,8 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $updatedUser = $currentUser;
 
         if ($newPass !== '') {
-            $users[$currentUser]['password'] =
-                password_hash($newPass, PASSWORD_DEFAULT);
+            $users[$currentUser]['password'] = password_hash($newPass, PASSWORD_DEFAULT);
         }
 
         if ($newUsername !== '' && $newUsername !== $currentUser) {
@@ -100,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+include 'header.php';
 ?>
 
 <div class="containerindex">
@@ -107,36 +97,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="card wide">
             <h3>Change Username / Password</h3>
             <?php if ($error): ?>
-                <p style="color:#dc2626"><?= htmlspecialchars($error) ?></p>
+                <div class="alert alert-error" style="background: rgba(220, 38, 38, 0.2); border: 1px solid #dc2626; color: #fca5a5; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px;">
+                    <i class="fas fa-exclamation-circle"></i> <?= htmlspecialchars($error) ?>
+                </div>
             <?php endif; ?>
 
             <?php if ($success): ?>
-                <p style="color:#16a34a"><?= htmlspecialchars($success) ?></p>
+                <div class="alert alert-success" style="background: rgba(22, 163, 74, 0.2); border: 1px solid #16a34a; color: #86efac; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px;">
+                    <i class="fas fa-check-circle"></i> <?= htmlspecialchars($success) ?>
+                </div>
             <?php endif; ?>
-            <form method="post" autocomplete="off">
+
+            <form method="post" autocomplete="off" style="display: flex; flex-direction: column; gap: 16px; max-width: 500px;">
                 <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
 
-                <p>
-                    <label>New Username (optional)</label><br>
-                    <input type="text" name="new_username" placeholder="leave blank to keep current">
-                </p>
+                <div class="form-group">
+                    <label style="display: block; font-weight: 500; margin-bottom: 6px; color: var(--text-secondary);">New Username (optional)</label>
+                    <input type="text" name="new_username" placeholder="leave blank to keep current (<?= htmlspecialchars($currentUser) ?>)" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(15, 23, 42, 0.6); color: #fff;">
+                </div>
 
-                <p>
-                    <label>Current Password (required)</label><br>
-                    <input type="password" name="current_password" required>
-                </p>
+                <div class="form-group">
+                    <label style="display: block; font-weight: 500; margin-bottom: 6px; color: var(--text-secondary);">Current Password (required)</label>
+                    <input type="password" name="current_password" required style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(15, 23, 42, 0.6); color: #fff;">
+                </div>
 
-                <p>
-                    <label>New Password (optional)</label><br>
-                    <input type="password" name="new_password">
-                </p>
+                <div class="form-group">
+                    <label style="display: block; font-weight: 500; margin-bottom: 6px; color: var(--text-secondary);">New Password (optional)</label>
+                    <input type="password" name="new_password" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(15, 23, 42, 0.6); color: #fff;">
+                </div>
 
-                <p>
-                    <label>Confirm New Password</label><br>
-                    <input type="password" name="confirm_password">
-                </p>
+                <div class="form-group">
+                    <label style="display: block; font-weight: 500; margin-bottom: 6px; color: var(--text-secondary);">Confirm New Password</label>
+                    <input type="password" name="confirm_password" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(15, 23, 42, 0.6); color: #fff;">
+                </div>
 
-                <button type="submit">Update</button>
+                <div style="margin-top: 8px;">
+                    <button type="submit" class="green-btn"><i class="fas fa-key"></i> Update Credentials</button>
+                </div>
             </form>
         </div>
     </div>

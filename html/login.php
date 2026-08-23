@@ -388,7 +388,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     URMIC • <span>Shreebhattji</span>
                 </div>
                 <div class="links">
-                    <a href="https://urmic.org/trusted-partners/" class="link">Meet Out Partners</a>
+                    <a href="https://urmic.org/trusted-partners/" class="link">Meet Our Partners</a>
                 </div>
             </div>
 

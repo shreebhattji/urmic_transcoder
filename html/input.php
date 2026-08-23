@@ -1,4 +1,5 @@
 <?php
+
 /*
 Urmi you happy me happy licence
 
@@ -6,10 +7,9 @@ Copyright (c) 2026 shreebhattji
 
 License text:
 https://github.com/shreebhattji/Urmi/blob/main/licence.md
-
 */
-include 'header.php'; ?>
-<?php
+
+require_once __DIR__ . '/require_login.php';
 $coreFile = "/var/www/core.json";
 
 function getInterfaceIp($interfaceName)
@@ -155,6 +155,56 @@ function freeCore(int $serviceId): void
     if (isset($state["allocations"][$serviceId])) {
         unset($state["allocations"][$serviceId]);
         saveCoreState($state);
+    }
+}
+
+function updateEncoderScriptAndService(array $service): void
+{
+    $id = intval($service["id"]);
+    $alloc = allocateCore($id);
+    $core = (int)$alloc["cpu"];
+    $node = (int)$alloc["node"];
+    $inputIp = "";
+    $outputIp = "";
+
+    if (isset($service["input_interface"]) && $service["input_interface"] !== "none") {
+        $inputIp = getInterfaceIp($service["input_interface"]);
+    }
+
+    if (isset($service["output_interface"]) && $service["output_interface"] !== "none") {
+        $outputIp = getInterfaceIp($service["output_interface"]);
+    }
+
+    $ffmpeg = 'numactl --cpunodebind=' . $node
+        . ' --preferred=' . $node
+        . ' taskset -c ' . $core
+        . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer '
+        . ' -i "udp://' . $service["input_udp"] . '?reuse=1&fifo_size=8192&buffer_size=262144&overrun_nonfatal=1&timeout=5000000';
+
+    if ($inputIp != "")
+        $ffmpeg .= '&localaddr=' . $inputIp;
+    $ffmpeg .= '" -vf "scale=' . $service["resolution"] . ',format=yuv420p" '
+        . ' -c:v ' . $service["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 7 '
+        . ' -b:v ' . $service["video_bitrate"] . 'k -minrate ' . max(0, $service["video_bitrate"] - 500) . 'k -maxrate ' . ($service["video_bitrate"] + 500) . 'k -bufsize ' .  ($service["video_bitrate"] + 500) . 'k '
+        . ' -c:a ' . $service["audio_format"] . ' -b:a ' . $service["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $service["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
+        . ' -metadata service_provider="ShreeBhattJI" ';
+    if (isset($service["service_name"]) && $service["service_name"] !== "") {
+        $ffmpeg .= '-metadata service_name="' . $service["service_name"] . '" ';
+    }
+    $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $service["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1';
+    if ($outputIp != "")
+        $ffmpeg .= '&localaddr=' . $outputIp;
+
+    $ffmpeg .= '"';
+
+    file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
+
+    if (isset($service["service"]) && $service["service"] === "enable") {
+        exec("sudo systemctl enable encoder@$id");
+        exec("sudo systemctl restart encoder@$id");
+    } else {
+        exec("sudo systemctl stop encoder@$id");
+        exec("sudo systemctl disable encoder@$id");
     }
 }
 
@@ -388,48 +438,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $data[] = $new;
             file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
-            $alloc = allocateCore($new["id"]);
-            $core = (int)$alloc["cpu"];
-            $node = (int)$alloc["node"];
+            updateEncoderScriptAndService($new);
 
-            $inputIp = "";
-            $outputIp = "";
-
-            if (isset($new["input_interface"]) && $new["input_interface"] !== "none") {
-                $inputIp = getInterfaceIp($new["input_interface"]);
-            }
-
-            if (isset($new["output_interface"]) && $new["output_interface"] !== "none") {
-                $outputIp = getInterfaceIp($new["output_interface"]);
-            }
-
-            $ffmpeg = 'numactl --cpunodebind=' . $node
-                . ' --preferred=' . $node
-                . ' taskset -c ' . $core
-                . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer '
-                . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=8192&buffer_size=262144&overrun_nonfatal=1&timeout=5000000';
-
-            if ($inputIp != "")
-                $ffmpeg .= '&localaddr=' . $inputIp;
-            $ffmpeg .= '" -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
-                . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 7 '
-                . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ($new["video_bitrate"] + 500) . 'k '
-                . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
-                . ' -metadata service_provider="ShreeBhattJI" ';
-            if ($new["service_name"] !== "") {
-                $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
-            }
-            $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1';
-            if ($outputIp != "")
-                $ffmpeg .= '&localaddr=' . $outputIp;
-
-            $ffmpeg .= '"';
-            file_put_contents("/var/www/encoder/" . $new["id"] . ".sh", $ffmpeg);
-
-            if ($new["service"] === "enable") {
-                exec("sudo systemctl enable encoder@{$new["id"]}");
-                exec("sudo systemctl restart encoder@{$new["id"]}");
-            }
             // Redirect to refresh page after adding
             header("Location: " . $_SERVER["PHP_SELF"]);
             exit;
@@ -457,13 +467,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $newData = [];
 
             foreach ($data as $row) {
-                if ($row["id"] == $id) {
+                if (intval($row["id"]) === $id) {
+                    $service_name = trim($_POST["service_name"]);
+                    $input_udp = trim($_POST["input_udp"]);
+                    $output_udp = trim($_POST["output_udp"]);
+
                     $row = [
                         "id" => $id,
-                        "service_name" => $_POST["service_name"],
-                        "input_udp" => $_POST["input_udp"],
+                        "service_name" => $service_name !== "" ? $service_name : ($row["service_name"] ?? ""),
+                        "input_udp" => $input_udp !== "" ? $input_udp : ($row["input_udp"] ?? ""),
                         "input_interface" => $_POST["in_interface"],
-                        "output_udp" => $_POST["output_udp"],
+                        "output_udp" => $output_udp !== "" ? $output_udp : ($row["output_udp"] ?? ""),
                         "output_interface" => $_POST["out_interface"],
                         "video_format" => $_POST["video_format"],
                         "audio_format" => $_POST["audio_format"],
@@ -473,55 +487,42 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         "volume" => $_POST["volume"],
                         "service" => $_POST["service"]
                     ];
-
-                    $new = $row;
-                    $alloc = allocateCore($new["id"]);
-                    $core = (int)$alloc["cpu"];
-                    $node = (int)$alloc["node"];
-                    $inputIp = "";
-                    $outputIp = "";
-
-                    if (isset($new["input_interface"]) && $new["input_interface"] !== "none") {
-                        $inputIp = getInterfaceIp($new["input_interface"]);
-                    }
-
-                    if (isset($new["output_interface"]) && $new["output_interface"] !== "none") {
-                        $outputIp = getInterfaceIp($new["output_interface"]);
-                    }
-
-                    $ffmpeg = 'numactl --cpunodebind=' . $node
-                        . ' --preferred=' . $node
-                        . ' taskset -c ' . $core
-                        . ' ffmpeg -hide_banner -loglevel info -thread_queue_size 512 -fflags +genpts+discardcorrupt+nobuffer '
-                        . ' -i "udp://' . $new["input_udp"] . '?reuse=1&fifo_size=8192&buffer_size=262144&overrun_nonfatal=1&timeout=5000000';
-
-                    if ($inputIp != "")
-                        $ffmpeg .= '&localaddr=' . $inputIp;
-                    $ffmpeg .= '" -vf "scale=' . $new["resolution"] . ',format=yuv420p" '
-                        . ' -c:v ' . $new["video_format"] . ' -pix_fmt yuv420p -flags -ildct-ilme -top 1 -threads 1 -g 25 -bf 2 -qmin 2 -qmax 7 '
-                        . ' -b:v ' . $new["video_bitrate"] . 'k -minrate ' . max(0, $new["video_bitrate"] - 500) . 'k -maxrate ' . ($new["video_bitrate"] + 500) . 'k -bufsize ' .  ($new["video_bitrate"] + 500) . 'k '
-                        . ' -c:a ' . $new["audio_format"] . ' -b:a ' . $new["audio_bitrate"] . 'k -ar 48000 -ac 2 -af "volume=' . $new["volume"] . 'dB,aresample=async=1000:min_hard_comp=0.100000:first_pts=0" '
-                        . ' -metadata service_provider="ShreeBhattJI" ';
-                    if ($new["service_name"] !== "") {
-                        $ffmpeg .= '-metadata service_name="' . $new["service_name"] . '" ';
-                    }
-                    $ffmpeg .= ' -pcr_period 20 -f mpegts "udp://' . $new["output_udp"] . '?pkt_size=1316&bitrate=4500000&flush_packets=1';
-                    if ($outputIp != "")
-                        $ffmpeg .= '&localaddr=' . $outputIp;
-
-                    $ffmpeg .= '"';
-
-                    file_put_contents("/var/www/encoder/$id.sh", $ffmpeg);
-
-                    if ($new["service"] === "enable") {
-                        exec("sudo systemctl enable encoder@$id");
-                        exec("sudo systemctl restart encoder@$id");
-                    } else {
-                        exec("sudo systemctl stop encoder@$id");
-                        exec("sudo systemctl disable encoder@$id");
-                    }
+                    updateEncoderScriptAndService($row);
                 }
+                $newData[] = $row;
+            }
 
+            file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
+            header("Location: " . $_SERVER["PHP_SELF"]);
+            exit;
+            break;
+        case "edit_batch":
+            $targetIds = array_map('intval', explode(',', $_POST["id"]));
+            $newData = [];
+
+            foreach ($data as $row) {
+                if (in_array(intval($row["id"]), $targetIds, true)) {
+                    $service_name = trim($_POST["service_name"]);
+                    $input_udp = trim($_POST["input_udp"]);
+                    $output_udp = trim($_POST["output_udp"]);
+
+                    $row = [
+                        "id" => intval($row["id"]),
+                        "service_name" => $service_name !== "" ? $service_name : ($row["service_name"] ?? ""),
+                        "input_udp" => $input_udp !== "" ? $input_udp : ($row["input_udp"] ?? ""),
+                        "input_interface" => $_POST["in_interface"],
+                        "output_udp" => $output_udp !== "" ? $output_udp : ($row["output_udp"] ?? ""),
+                        "output_interface" => $_POST["out_interface"],
+                        "video_format" => $_POST["video_format"],
+                        "audio_format" => $_POST["audio_format"],
+                        "resolution" => $_POST["resolution"],
+                        "video_bitrate" => $_POST["video_bitrate"],
+                        "audio_bitrate" => $_POST["audio_bitrate"],
+                        "volume" => $_POST["volume"],
+                        "service" => $_POST["service"]
+                    ];
+                    updateEncoderScriptAndService($row);
+                }
                 $newData[] = $row;
             }
 
@@ -547,6 +548,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             break;
         case "update_all":
             all_service_update();
+            header("Location: " . $_SERVER["PHP_SELF"]);
+            exit;
+            break;
+        case "delete_selected":
+            $ids = isset($_POST["ids"]) ? array_map('intval', explode(',', $_POST["ids"])) : [];
+            if (!empty($ids)) {
+                $newData = [];
+                foreach ($data as $row) {
+                    if (!in_array(intval($row["id"]), $ids, true)) {
+                        $newData[] = $row;
+                    } else {
+                        $id = intval($row["id"]);
+                        exec("sudo systemctl stop encoder@$id");
+                        exec("sudo systemctl disable encoder@$id");
+                        freeCore($id);
+                        if (file_exists("/var/www/encoder/$id.sh")) unlink("/var/www/encoder/$id.sh");
+                    }
+                }
+                file_put_contents($jsonFile, json_encode($newData, JSON_PRETTY_PRINT));
+            }
             header("Location: " . $_SERVER["PHP_SELF"]);
             exit;
             break;
@@ -576,29 +597,31 @@ foreach ($data as $k => $d) {
 }
 file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
+include 'header.php';
 ?>
 
 <div class="containerindex">
-    <div class="grid">
-        <div class="card">
-
-            <h2>Service List</h2>
-            <div class="button-container">
-                <button class="green-btn" onclick="openAddPopup()">Add Service</button>
-                <button class="green-btn" onclick="submitAction('start_all')">Start All</button>
-                <button class="green-btn" onclick="submitAction('update_all')">Update All</button>
-                <button class="red-btn" onclick="submitAction('stop_all')">Stop All</button>
-            </div>
-            <form id="actionForm" method="post" style="display:none;">
-                <input type="hidden" name="action" id="action">
-            </form>
+    <div class="card wide">
+        <h2>Service List</h2>
+        <div class="button-container" style="margin-bottom: 12px; display: flex; gap: 12px; flex-wrap: wrap;">
+            <button class="green-btn" onclick="openAddPopup()">Add Service</button>
+            <button class="green-btn" onclick="submitAction('start_all')">Start All</button>
+            <button class="green-btn" onclick="submitAction('update_all')">Update All</button>
+            <button class="red-btn" onclick="submitAction('stop_all')">Stop All</button>
+            <button class="green-btn" onclick="editSelectedService()" >Edit Selected</button>
+            <button class="red-btn" onclick="deleteSelectedServices()" >Delete Selected</button>
         </div>
+        <form id="actionForm" method="post" style="display:none;">
+            <input type="hidden" name="action" id="action">
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
+        </form>
 
         <!-- Service Table -->
         <div class="table-container">
             <table class="service-table">
                 <thead>
                     <tr>
+                        <th style="width: 40px; text-align: center;"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
                         <th>No</th>
                         <th>Status</th>
                         <th>Service Name</th>
@@ -612,6 +635,9 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
                     <?php $i = 1; ?>
                     <?php foreach ($data as $row): ?>
                         <tr>
+                            <td style="text-align: center;">
+                                <input type="checkbox" class="service-checkbox" value="<?= $row['id'] ?>" data-row='<?= json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT) ?>'>
+                            </td>
                             <td><?= $i++ ?></td>
                             <td>
                                 <div><?= $row['id'] ?> </div>
@@ -675,10 +701,9 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
                 </tbody>
             </table>
         </div>
-
-        <!-- POPUP -->
-        <div id="overlay"></div>
     </div>
+    <!-- POPUP -->
+    <div id="overlay"></div>
 </div>
 <div id="popup">
     <h3 id="popup_title">Add Service</h3>
@@ -760,8 +785,11 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
         document.getElementById('popup_title').textContent = 'Add Service';
         document.getElementById('service_id').value = '';
         document.getElementById('service_name').value = '';
+        document.getElementById('service_name').placeholder = 'Service Name';
         document.getElementById('in_udp').value = '';
+        document.getElementById('in_udp').placeholder = '228.1.1.1:8001';
         document.getElementById('out_udp').value = '';
+        document.getElementById('out_udp').placeholder = '228.1.1.1:8002';
         document.getElementById('video_format').value = 'mpeg2video';
         document.getElementById('audio_format').value = 'mp2';
         document.getElementById('resolution').value = '720x576';
@@ -782,8 +810,11 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
         document.getElementById('popup_title').textContent = 'Edit Service';
         document.getElementById('service_id').value = serviceData.id;
         document.getElementById('service_name').value = serviceData.service_name || '';
+        document.getElementById('service_name').placeholder = 'Service Name';
         document.getElementById('in_udp').value = serviceData.input_udp || '';
+        document.getElementById('in_udp').placeholder = '228.1.1.1:8001';
         document.getElementById('out_udp').value = serviceData.output_udp || '';
+        document.getElementById('out_udp').placeholder = '228.1.1.1:8002';
         document.getElementById('video_format').value = serviceData.video_format || 'mpeg2video';
         document.getElementById('audio_format').value = serviceData.audio_format || 'mp2';
         document.getElementById('resolution').value = serviceData.resolution || '720x576';
@@ -806,6 +837,16 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
         document.getElementById('popup').style.display = 'block';
         document.getElementById('overlay').style.display = 'block';
+    }
+
+    const CSRF_TOKEN = <?= json_encode($_SESSION['csrf']) ?>;
+
+    function appendCsrf(form) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf';
+        csrfInput.value = CSRF_TOKEN;
+        form.appendChild(csrfInput);
     }
 
     function closePopup() {
@@ -831,6 +872,7 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
             form.appendChild(actionInput);
             form.appendChild(idInput);
+            appendCsrf(form);
             document.body.appendChild(form);
             form.submit();
         }
@@ -854,6 +896,7 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
             form.appendChild(actionInput);
             form.appendChild(idInput);
+            appendCsrf(form);
             document.body.appendChild(form);
             form.submit();
         }
@@ -883,7 +926,13 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
         const actionInput = document.createElement('input');
         actionInput.type = 'hidden';
         actionInput.name = 'action';
-        actionInput.value = id ? 'edit' : 'add';
+        if (!id) {
+            actionInput.value = 'add';
+        } else if (id.includes(',')) {
+            actionInput.value = 'edit_batch';
+        } else {
+            actionInput.value = 'edit';
+        }
 
         const idInput = document.createElement('input');
         idInput.type = 'hidden';
@@ -901,6 +950,7 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
 
         form.appendChild(actionInput);
         form.appendChild(idInput);
+        appendCsrf(form);
         document.body.appendChild(form);
         form.submit();
     });
@@ -908,6 +958,76 @@ file_put_contents($jsonFile, json_encode($data, JSON_PRETTY_PRINT));
     function submitAction(action) {
         document.getElementById('action').value = action;
         document.getElementById('actionForm').submit();
+    }
+
+    function toggleSelectAll(master) {
+        const checkboxes = document.querySelectorAll('.service-checkbox');
+        checkboxes.forEach(cb => cb.checked = master.checked);
+    }
+
+    function editSelectedService() {
+        const checked = Array.from(document.querySelectorAll('.service-checkbox:checked'));
+        if (checked.length === 0) {
+            alert('Please select at least one service to edit.');
+            return;
+        }
+
+        if (checked.length === 1) {
+            try {
+                const serviceData = JSON.parse(checked[0].getAttribute('data-row'));
+                openEditPopup(serviceData);
+            } catch (e) {
+                alert('Could not parse service data for editing.');
+            }
+        } else {
+            const ids = checked.map(cb => cb.value).join(',');
+            try {
+                const firstServiceData = JSON.parse(checked[0].getAttribute('data-row'));
+                openEditPopup(firstServiceData);
+                document.getElementById('popup_title').textContent = `Edit Selected Services (${checked.length} Services)`;
+                document.getElementById('service_id').value = ids;
+
+                // For batch editing, clear unique fields so existing values are preserved unless typed
+                document.getElementById('service_name').value = '';
+                document.getElementById('service_name').placeholder = 'Keep existing Service Names';
+                document.getElementById('in_udp').value = '';
+                document.getElementById('in_udp').placeholder = 'Keep existing Input UDP';
+                document.getElementById('out_udp').value = '';
+                document.getElementById('out_udp').placeholder = 'Keep existing Output UDP';
+            } catch (e) {
+                alert('Could not parse service data for batch editing.');
+            }
+        }
+    }
+
+    function deleteSelectedServices() {
+        const checked = Array.from(document.querySelectorAll('.service-checkbox:checked'));
+        if (checked.length === 0) {
+            alert('Please select at least one service to delete.');
+            return;
+        }
+        if (confirm(`Are you sure you want to delete ${checked.length} selected service(s)?`)) {
+            const ids = checked.map(cb => cb.value).join(',');
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = '';
+
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'delete_selected';
+
+            const idsInput = document.createElement('input');
+            idsInput.type = 'hidden';
+            idsInput.name = 'ids';
+            idsInput.value = ids;
+
+            form.appendChild(actionInput);
+            form.appendChild(idsInput);
+            appendCsrf(form);
+            document.body.appendChild(form);
+            form.submit();
+        }
     }
 
     window.onclick = function(event) {

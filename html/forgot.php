@@ -306,16 +306,15 @@ if ($clientIp === $ALLOWED_IP && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <h1>
                 Universal Encoder / Decoder
-                <span class="highlight">powred by Shreebhattji</span>
+                <span class="highlight">powered by Shreebhattji</span>
             </h1>
 
             <?php if ($clientIp !== $ALLOWED_IP): ?>
 
                 <p class="subtitle">
-                    Set you computer ip to <strong>172.16.111.112</strong> then
-                    Connect USB dongle to encoder and visit
-                    <strong>172.16.111.111</strong> for password reset
-
+                    Set your computer IP to <strong>172.16.111.112</strong> then
+                    connect USB dongle to encoder and visit
+                    <strong>172.16.111.111</strong> for password reset.
                 </p>
 
             <?php else: ?>

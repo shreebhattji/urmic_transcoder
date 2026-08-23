@@ -7,6 +7,7 @@ Copyright (c) 2026 shreebhattji
 License text:
 https://github.com/shreebhattji/Urmi/blob/main/licence.md
 */
+require_once __DIR__ . '/require_login.php';
 exec("sudo chmod 444 /sys/class/dmi/id/product_uuid");
 $version = 3.1;
 
@@ -296,7 +297,6 @@ EwIDAQAB
             $tmpZip = sys_get_temp_dir() . '/backup.zip';
             $outputFile = __DIR__ . '/universal_transcoder.bin';
 
-            $publicKey = file_get_contents('/var/www/backup_private.pem');
             $publicKey = file_get_contents('/var/www/backup_public.pem');
 
             $zip = new ZipArchive();
@@ -342,8 +342,7 @@ EwIDAQAB
             flush();
 
             unlink($tmpZip);
-
-            break;
+            exit;
 
         case 'restore':
             $jsonFiles = [
@@ -437,15 +436,15 @@ include 'header.php';
     }
 
     function confirmReset() {
-        return confirm("All settings will be gone . Are you sure you want to reset ?");
+        return confirm("All settings will be reset to default. Are you sure you want to proceed?");
     }
 
     function confirmUpdate() {
-        return confirm("Newer version will be downloaded and installed Do not turn off power .");
+        return confirm("Newer version will be downloaded and installed. Do not turn off power.");
     }
 
     function confirmbackup() {
-        return confirm("Are you sure you want to download backup ? ");
+        return confirm("Are you sure you want to download backup?");
     }
 </script>
 
@@ -459,21 +458,25 @@ include 'header.php';
         </div>
         <div class="card wide">
             <form method="post" class="form-center">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
                 <button type="submit" name="action" value="backup" class="green-btn">Download Backup File</button>
             </form>
         </div>
         <div class="card wide">
             <form method="post" class="form-center" onsubmit="return confirmReboot();">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
                 <button type="submit" name="action" value="reboot" class="green-btn">Reboot</button>
             </form>
         </div>
         <div class="card wide">
             <form method="post" class="form-center" onsubmit="return confirmReset();">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
                 <button type="submit" name="action" value="reset" class="red-btn">Reset Settings</button>
             </form>
         </div>
         <div class="card wide">
             <form method="post" class="form-center">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
                 <button type="submit" name="action" value="update" class="red-btn">Update Firmware</button>
             </form>
         </div>
@@ -481,6 +484,7 @@ include 'header.php';
             <form method="post" class="form-center" enctype="multipart/form-data"
                 onsubmit="return confirm('Are you sure you want to restore using this file ? All settings will be restored as per backup file .')">
 
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf']) ?>">
                 <label>Select restore file (.bin only):</label><br><br>
 
                 <input type="file"
