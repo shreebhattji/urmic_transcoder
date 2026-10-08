@@ -51,7 +51,11 @@ $ip = client_ip();
 $attempts = load_json($attemptsFile);
 
 if (isset($attempts[$ip])) {
-    if (
+    // Clean up expired attempts
+    if (time() - $attempts[$ip]['last'] >= $LOCK_TIME) {
+        unset($attempts[$ip]);
+        save_json($attemptsFile, $attempts);
+    } else if (
         $attempts[$ip]['count'] >= $MAX_ATTEMPTS &&
         time() - $attempts[$ip]['last'] < $LOCK_TIME
     ) {
@@ -78,6 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo '<script>alert("'
             . htmlspecialchars($error, ENT_QUOTES)
             . '");</script>';
+        // Stop further processing after terms rejection
+        exit;
     }
     $users = load_json($usersFile);
 
